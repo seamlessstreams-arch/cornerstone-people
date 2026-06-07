@@ -19,19 +19,25 @@ chosen*.
 ## Tech stack
 
 - **Next.js 14** (App Router, TypeScript, React Server Components + Server Actions)
-- **Prisma** ORM over **SQLite** (zero external services for the MVP)
+- **Prisma** ORM over **PostgreSQL**
 - **Tailwind CSS**
 - Cookie-based sessions (httpOnly), passwords hashed with **bcrypt**
 
 ## Getting started
 
+You need a PostgreSQL database. Point `DATABASE_URL` / `DIRECT_URL` at it
+(a local Postgres, or a hosted one such as Neon).
+
 ```bash
 npm install
-cp .env.example .env          # adjust SESSION_SECRET for anything real
-npm run db:push               # create the SQLite schema
-npm run db:seed               # seed the cold-start demo data
+cp .env.example .env          # set DATABASE_URL / DIRECT_URL and SESSION_SECRET
+npm run db:reset              # apply migrations + seed the cold-start demo data
 npm run dev                   # http://localhost:3000
 ```
+
+(`npm run db:reset` runs `prisma migrate reset`, which applies the migrations in
+`prisma/migrations` and then runs the seed. Use `npx prisma migrate deploy` if
+you only want to apply migrations without reseeding.)
 
 ### Demo logins (password: `password123`)
 
@@ -86,6 +92,33 @@ Candidate-side **reference verification only** (`Reference`,
 cross-employer reference bank (GDPR + defamation exposure) — no ratings or
 comments about referees are ever stored.
 
+## Deploying to Vercel (with Neon Postgres)
+
+The app is configured for Vercel. `vercel.json` sets the build command to
+`prisma generate && prisma migrate deploy && next build`, so migrations are
+applied automatically on every deploy.
+
+1. **Import the repo** — in the Vercel dashboard, *Add New… → Project* and
+   import `seamlessstreams-arch/cornerstone-people`. Framework preset:
+   **Next.js** (auto-detected).
+2. **Add a database** — in the project's *Storage* tab, add **Neon** (Postgres)
+   from the Marketplace. This provisions a database and injects connection env
+   vars (pooled + unpooled).
+3. **Set the env vars** the app expects:
+   - `DATABASE_URL` → the **pooled** Neon connection string
+   - `DIRECT_URL` → the **unpooled / direct** Neon connection string
+     (used by `prisma migrate deploy`)
+   - `SESSION_SECRET` → a long random string
+4. **Deploy.** The build runs the migrations against the Neon database and ships
+   the app.
+5. **Seed (optional, one-off)** — to populate the cold-start demo data, run
+   `npm run db:seed` locally with `DATABASE_URL` pointed at the Neon database
+   (or `DIRECT_URL`), or run it from a Vercel CLI shell.
+
+> Note: Prisma migrations need a **direct** (non-pooled) connection. Always set
+> `DIRECT_URL` to the unpooled string, or `migrate deploy` will fail against the
+> pgbouncer pooler.
+
 ## Project layout
 
 ```
@@ -116,13 +149,13 @@ prisma/
 | Command             | Description                              |
 | ------------------- | ---------------------------------------- |
 | `npm run dev`       | Dev server                               |
-| `npm run build`     | Production build (runs `prisma generate`)|
+| `npm run build`     | Production build (`prisma generate` + `prisma migrate deploy` + `next build`) |
 | `npm run start`     | Start production server                  |
 | `npm run typecheck` | `tsc --noEmit`                           |
-| `npm test`          | Run the test suite (visibility + matching) against a throwaway SQLite db |
-| `npm run db:push`   | Apply schema to SQLite                   |
+| `npm test`          | Run the test suite (visibility + matching) against a throwaway Postgres db |
+| `npm run db:push`   | Push schema to the database (no migration history) |
 | `npm run db:seed`   | Seed demo data                           |
-| `npm run db:reset`  | Force-reset schema + reseed              |
+| `npm run db:reset`  | `prisma migrate reset` — re-apply migrations + reseed |
 
 ## Tests
 
@@ -133,8 +166,9 @@ invariants:
   Anonymous mode seals name/photo/history/narrative; Open mode reveals
   name/photo/history but keeps free-text narrative sealed; a mutual match
   unlocks everything.
-- **`tests/matching.test.ts`** — the matching engine against a throwaway SQLite
-  database: one-sided interest never matches; mutual interest creates exactly
+- **`tests/matching.test.ts`** — the matching engine against a throwaway
+  Postgres database (`TEST_DATABASE_URL`): one-sided interest never matches;
+  mutual interest creates exactly
   one match; a block prevents any match even after prior interest; the browsable
   pool hides blocked, incomplete and already-matched candidates; the verified
   badge requires the configured number of verified references.

@@ -5,14 +5,14 @@
   "description": "Cornerstone People — a regional, supply-first mutual-matching app for children's-home recruitment (MVP).",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "DATABASE_URL=\"file:./test.db\" prisma db push --skip-generate --force-reset > /dev/null && DATABASE_URL=\"file:./test.db\" node --conditions=react-server --import tsx --test tests/*.test.ts",
+    "test": "DATABASE_URL=\"${TEST_DATABASE_URL:-postgresql://postgres@localhost:5433/cornerstone_test?schema=public}\" DIRECT_URL=\"${TEST_DIRECT_URL:-${TEST_DATABASE_URL:-postgresql://postgres@localhost:5433/cornerstone_test?schema=public}}\" sh -c 'prisma db push --force-reset --skip-generate > /dev/null && node --conditions=react-server --import tsx --test tests/*.test.ts'",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts",
+    "db:reset": "prisma migrate reset --force",
     "postinstall": "prisma generate"
   },
   "prisma": {

@@ -18,10 +18,11 @@ export default async function BlocksPage({
   });
   const blockedIds = new Set(blocks.map((b) => b.employerId));
 
-  // SQLite's `contains` is case-insensitive for ASCII by default.
+  // Case-insensitive so candidates can find a home to block regardless of
+  // casing (Postgres `contains` is case-sensitive without `mode`).
   const results = q
     ? await prisma.employer.findMany({
-        where: { companyName: { contains: q } },
+        where: { companyName: { contains: q, mode: "insensitive" } },
         orderBy: { companyName: "asc" },
         take: 20,
       })

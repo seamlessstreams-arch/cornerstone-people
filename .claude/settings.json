@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npm install --no-audit --no-fund && npx prisma generate && npx prisma db push --skip-generate && (test -f prisma/dev.db && echo 'db ready' || npm run db:seed)"
+            "command": "npm install --no-audit --no-fund && npx prisma generate"
           }
         ]
       }

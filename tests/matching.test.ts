@@ -9,8 +9,8 @@ import {
   browsableCandidatesForEmployer,
 } from "../lib/matching";
 
-// These tests run against a throwaway SQLite database (see the `test` npm
-// script, which points DATABASE_URL at test.db and resets it first).
+// These tests run against a throwaway Postgres database (see the `test` npm
+// script / TEST_DATABASE_URL, which is force-reset before the tests run).
 
 async function makeCandidate(complete = true) {
   const suffix = randomBytes(6).toString("hex");
