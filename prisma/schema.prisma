@@ -1,0 +1,193 @@
+// Cornerstone People — data model for the MVP.
+//
+// The core mechanic: two sides build profiles, either side can express
+// interest, and identity + a conversation unlock ONLY when interest is mutual.
+//
+// SQLite has no native enums, so "enum-like" fields are stored as strings and
+// constrained in application code (see lib/constants.ts).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Accounts & sessions
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         String // "CANDIDATE" | "EMPLOYER"
+  createdAt    DateTime @default(now())
+
+  candidate Candidate?
+  employer  Employer?
+  sessions  Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}
+
+// ---------------------------------------------------------------------------
+// Candidate (the supply side)
+// ---------------------------------------------------------------------------
+
+model Candidate {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Layer 0 — candidate-controlled visibility mode.
+  // "ANONYMOUS" (default, safer) | "OPEN"
+  visibilityMode String @default("ANONYMOUS")
+
+  // --- Structured fields: PRE-MUTUAL SAFE (shown on the anonymised card) ---
+  region          String? // e.g. "Greater Manchester"
+  shiftPattern    String? // shift availability
+  youngPeopleType String? // type of young people they want to support
+  experienceLevel String? // experience level
+  roleType        String? // role type sought
+  valuesTags      String? // comma-separated therapeutic approach / values tags
+
+  // --- Sealed fields: NARRATIVE / IDENTITY (unlock only on mutual match,
+  //     or — for name/photo/history — in OPEN mode to non-blocked employers) ---
+  fullName          String?
+  photoUrl          String?
+  employmentHistory String? // free text
+  narrative         String? // "what matters to me" free text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  references     Reference[]
+  interests      Interest[]
+  blocks         Block[]
+  matches        Match[]
+}
+
+// Candidate-side reference verification ONLY.
+// We deliberately do NOT store reliability ratings / suitability comments about
+// referees (the cross-employer "reference bank") — that is GDPR + defamation
+// exposure and is out of scope for the MVP (see brief §5).
+model Reference {
+  id           String   @id @default(cuid())
+  candidateId  String
+  candidate    Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  refereeName  String
+  refereeEmail String
+  relationship String // e.g. "Former line manager"
+  status       String   @default("PENDING") // "PENDING" | "VERIFIED"
+  token        String   @unique
+  verifiedAt   DateTime?
+  createdAt    DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Employer (the demand side)
+// ---------------------------------------------------------------------------
+
+model Employer {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // companyName must be searchable so candidates can find & block them (Layer 1).
+  companyName      String
+  region           String?
+  sellingPoints    String?
+  ethos            String?
+  childrenSupported String?
+  placementPicture String?
+  shiftPattern     String?
+  supportOffered   String?
+  compensation     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  positions Position[]
+  interests Interest[]
+  blocks    Block[]
+  matches   Match[]
+}
+
+model Position {
+  id          String   @id @default(cuid())
+  employerId  String
+  employer    Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  title       String
+  region      String?
+  shiftPattern String?
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// The connection: interest, blocks, matches, messages
+// ---------------------------------------------------------------------------
+
+// One directional expression of interest between a candidate and an employer.
+// A Match is formed when BOTH directions exist for the same pair.
+model Interest {
+  id          String   @id @default(cuid())
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  employerId  String
+  employer    Employer  @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  // who expressed it: "CANDIDATE" | "EMPLOYER"
+  direction   String
+  createdAt   DateTime @default(now())
+
+  @@unique([candidateId, employerId, direction])
+}
+
+// Candidate blocks an employer. Silent and undetectable from the employer side.
+model Block {
+  id          String   @id @default(cuid())
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  employerId  String
+  employer    Employer  @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([candidateId, employerId])
+}
+
+// Created when interest becomes mutual. Unlocks identity + a message thread.
+model Match {
+  id          String   @id @default(cuid())
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  employerId  String
+  employer    Employer  @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  // The single next step the MVP supports.
+  interviewRequestedBy String? // "CANDIDATE" | "EMPLOYER"
+  interviewRequestedAt DateTime?
+
+  messages Message[]
+
+  @@unique([candidateId, employerId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  matchId   String
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  senderRole String  // "CANDIDATE" | "EMPLOYER"
+  body      String
+  createdAt DateTime @default(now())
+}
