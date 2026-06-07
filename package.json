@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test": "DATABASE_URL=\"file:./test.db\" prisma db push --skip-generate --force-reset > /dev/null && DATABASE_URL=\"file:./test.db\" node --conditions=react-server --import tsx --test tests/*.test.ts",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts",
@@ -22,7 +23,8 @@
     "bcryptjs": "^2.4.3",
     "next": "14.2.15",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

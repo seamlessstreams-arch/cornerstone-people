@@ -119,9 +119,28 @@ prisma/
 | `npm run build`     | Production build (runs `prisma generate`)|
 | `npm run start`     | Start production server                  |
 | `npm run typecheck` | `tsc --noEmit`                           |
+| `npm test`          | Run the test suite (visibility + matching) against a throwaway SQLite db |
 | `npm run db:push`   | Apply schema to SQLite                   |
 | `npm run db:seed`   | Seed demo data                           |
 | `npm run db:reset`  | Force-reset schema + reseed              |
+
+## Tests
+
+`npm test` runs a Node test-runner suite that locks in the security-critical
+invariants:
+
+- **`tests/visibility.test.ts`** — the anonymity guard (`buildCandidateCard`):
+  Anonymous mode seals name/photo/history/narrative; Open mode reveals
+  name/photo/history but keeps free-text narrative sealed; a mutual match
+  unlocks everything.
+- **`tests/matching.test.ts`** — the matching engine against a throwaway SQLite
+  database: one-sided interest never matches; mutual interest creates exactly
+  one match; a block prevents any match even after prior interest; the browsable
+  pool hides blocked, incomplete and already-matched candidates; the verified
+  badge requires the configured number of verified references.
+
+CI (`.github/workflows/ci.yml`) runs typecheck, tests and a production build on
+every push and PR.
 
 ## Business-model guardrail (§10)
 
