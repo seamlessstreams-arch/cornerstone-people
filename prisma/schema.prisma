@@ -32,6 +32,7 @@ model User {
   candidate Candidate?
   employer  Employer?
   sessions  Session[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Session {
@@ -398,4 +399,19 @@ model StoredFile {
 
   @@index([candidateId])
   @@index([caseId])
+}
+
+// Single-use, time-limited password reset tokens. The token is delivered to the
+// user's email (never shown in the UI) so possession of an inbox proves
+// ownership — the standard "forgot password" pattern.
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
