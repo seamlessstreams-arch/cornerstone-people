@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireEmployer } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { isSupabaseConfigured } from "@/lib/supabase";
+import { FileUpload } from "@/components/FileUpload";
+import { DocumentList } from "@/components/DocumentList";
+import {
+  uploadCaseDocument,
+  getCaseDocumentUrl,
+} from "@/app/actions/documents";
 import { loadCase, clearanceForCase } from "@/lib/safer-recruitment-data";
 import {
   PageHeader,
@@ -44,6 +52,18 @@ export default async function CaseDetail({ params }: { params: { id: string } })
 
   const clearance = clearanceForCase(c);
   const candidateName = c.candidate.fullName ?? "Candidate";
+
+  const caseDocs = await prisma.storedFile.findMany({
+    where: { caseId: c.id },
+    orderBy: { createdAt: "desc" },
+  });
+  const caseDocItems = caseDocs.map((d) => ({
+    id: d.id,
+    originalName: d.originalName,
+    kind: d.kind,
+    createdAt: d.createdAt.toISOString(),
+  }));
+  const storageReady = isSupabaseConfigured();
 
   const tplCtx = {
     candidateName,
@@ -339,6 +359,58 @@ export default async function CaseDetail({ params }: { params: { id: string } })
           </form>
         </section>
       </div>
+
+      {/* Evidence documents — private Supabase Storage */}
+      <section className="card mt-6">
+        <h2 className="font-semibold text-stone-900">Evidence documents</h2>
+        <p className="mt-1 text-xs text-stone-400">
+          Received references, ID and check evidence. Stored in private buckets;
+          downloaded only via short-lived signed links.
+        </p>
+        {storageReady ? (
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <div className="space-y-3">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                  Upload received reference
+                </div>
+                <div className="mt-1">
+                  <FileUpload
+                    action={uploadCaseDocument}
+                    hidden={{ caseId: c.id, kind: "reference" }}
+                    label="Upload reference"
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                  Upload other evidence
+                </div>
+                <div className="mt-1">
+                  <FileUpload
+                    action={uploadCaseDocument}
+                    hidden={{ caseId: c.id, kind: "document" }}
+                    label="Upload document"
+                  />
+                </div>
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                Case documents
+              </div>
+              <div className="mt-1">
+                <DocumentList documents={caseDocItems} fetchUrl={getCaseDocumentUrl} />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-3 rounded-lg border border-dashed border-stone-300 bg-stone-50 p-3 text-sm text-stone-500">
+            Document storage isn&apos;t configured. Set the Supabase env vars and
+            run <code>npm run storage:setup</code>.
+          </p>
+        )}
+      </section>
 
       {/* Case notes */}
       <section className="card mt-6">

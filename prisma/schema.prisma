@@ -78,6 +78,7 @@ model Candidate {
   blocks         Block[]
   matches        Match[]
   saferCases     SaferRecruitmentCase[]
+  storedFiles    StoredFile[]
 }
 
 // Candidate-side reference verification ONLY.
@@ -126,6 +127,7 @@ model Employer {
   matches   Match[]
   saferCases      SaferRecruitmentCase[]
   referenceBank   ReferenceBankEntry[]
+  storedFiles     StoredFile[]
 }
 
 model Position {
@@ -236,6 +238,7 @@ model SaferRecruitmentCase {
   references       ReferenceRequest[]
   gapReview        EmploymentGapReview?
   dbsCheck         DbsCheck?
+  storedFiles      StoredFile[]
 }
 
 // Reusable, employer-scoped referee / organisation contact details.
@@ -368,4 +371,31 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+// Metadata for files held in private Supabase Storage buckets. The bytes live
+// in Storage; this row records where, who owns it, and what it is, so access
+// can be authorized in application code before a signed URL is minted.
+model StoredFile {
+  id           String   @id @default(cuid())
+  bucket       String   // BucketName (lib/storage.ts)
+  path         String   // object path within the bucket
+  originalName String
+  contentType  String?
+  size         Int?
+  kind         String?  // e.g. "cv" | "certificate" | "reference" | "document"
+
+  // Optional ownership links — exactly one is typically set.
+  candidateId String?
+  candidate   Candidate? @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  employerId  String?
+  employer    Employer?  @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  caseId      String?
+  case        SaferRecruitmentCase? @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  uploadedBy String?
+  createdAt  DateTime @default(now())
+
+  @@index([candidateId])
+  @@index([caseId])
 }

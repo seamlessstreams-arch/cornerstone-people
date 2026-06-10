@@ -1,8 +1,17 @@
 import { requireCandidate } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import {
   setVisibilityMode,
   updateCandidateProfile,
 } from "@/app/actions/candidate";
+import {
+  uploadCandidateDocument,
+  deleteCandidateDocument,
+  getCandidateDocumentUrl,
+} from "@/app/actions/documents";
+import { isSupabaseConfigured } from "@/lib/supabase";
+import { FileUpload } from "@/components/FileUpload";
+import { DocumentList } from "@/components/DocumentList";
 import { PageHeader, Select } from "@/components/ui";
 import {
   EXPERIENCE_LEVELS,
@@ -19,6 +28,18 @@ export default async function CandidateProfilePage() {
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean);
+
+  const documents = await prisma.storedFile.findMany({
+    where: { candidateId: candidate.id },
+    orderBy: { createdAt: "desc" },
+  });
+  const docItems = documents.map((d) => ({
+    id: d.id,
+    originalName: d.originalName,
+    kind: d.kind,
+    createdAt: d.createdAt.toISOString(),
+  }));
+  const storageReady = isSupabaseConfigured();
 
   return (
     <div className="max-w-3xl">
@@ -192,6 +213,66 @@ export default async function CandidateProfilePage() {
           </button>
         </div>
       </form>
+
+      {/* Documents (CV + certificates) — stored privately in Supabase Storage */}
+      <section className="card mt-6">
+        <h2 className="font-semibold text-stone-900">
+          CV &amp; certificates{" "}
+          <span className="ml-1 chip align-middle">Private</span>
+        </h2>
+        <p className="mt-1 text-sm text-stone-500">
+          Stored in a private bucket. Only you, and an employer you have matched
+          with and who has opened a safer-recruitment case, can download them —
+          always via a short-lived signed link.
+        </p>
+
+        {storageReady ? (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                Upload CV
+              </h3>
+              <div className="mt-2">
+                <FileUpload
+                  action={uploadCandidateDocument}
+                  hidden={{ kind: "cv" }}
+                  label="Upload CV"
+                  note="PDF or Word, up to 10 MB."
+                />
+              </div>
+              <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-stone-400">
+                Upload certificate
+              </h3>
+              <div className="mt-2">
+                <FileUpload
+                  action={uploadCandidateDocument}
+                  hidden={{ kind: "certificate" }}
+                  label="Upload certificate"
+                  note="PDF or image, up to 10 MB."
+                />
+              </div>
+            </div>
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                Your documents
+              </h3>
+              <div className="mt-2">
+                <DocumentList
+                  documents={docItems}
+                  fetchUrl={getCandidateDocumentUrl}
+                  onDelete={deleteCandidateDocument}
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-4 rounded-lg border border-dashed border-stone-300 bg-stone-50 p-4 text-sm text-stone-500">
+            Document storage isn&apos;t configured yet. Set the Supabase
+            environment variables and run <code>npm run storage:setup</code> to
+            enable CV and certificate uploads.
+          </p>
+        )}
+      </section>
     </div>
   );
 }
