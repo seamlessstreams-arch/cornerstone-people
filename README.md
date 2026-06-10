@@ -136,7 +136,54 @@ board.
 The pure logic (analyser, gap checker, clearance gate) is unit-tested in
 `tests/safer-recruitment.test.ts`.
 
-## Deploying to Vercel (with Neon Postgres)
+## Connecting to Supabase (Postgres + Storage)
+
+Supabase is just Postgres plus Storage, so the existing Prisma app uses it with
+no code changes — only configuration.
+
+**1. Database.** In Supabase: *Project Settings → Database → Connection string →
+Connection pooling*.
+
+- `DATABASE_URL` = the **Transaction** pooler URL (port `6543`), with
+  `?pgbouncer=true&connection_limit=1` appended.
+- `DIRECT_URL` = the **Direct connection** URL (port `5432`). Migrations need a
+  direct (non-pooled) connection.
+
+Then create the tables:
+
+```bash
+npx prisma migrate deploy     # applies all migrations to the Supabase database
+npm run db:seed               # optional demo data
+```
+
+**2. Storage.** In Supabase: *Project Settings → API*.
+
+- `NEXT_PUBLIC_SUPABASE_URL` = Project URL (`https://<ref>.supabase.co`)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` = the `anon` `public` key
+- `SUPABASE_SERVICE_ROLE_KEY` = the `service_role` secret — **server-only, never
+  exposed to the browser** (`lib/supabase.ts` is `server-only`)
+
+Then create the buckets and verify the connection:
+
+```bash
+npm run storage:setup         # creates 5 PRIVATE buckets
+npm run storage:check         # uploads/signs/fetches/deletes a test object
+```
+
+Buckets are private. Uploads and downloads only happen inside server actions
+that authorize the caller first; downloads are short-lived **signed URLs**
+(`lib/storage.ts`). The `anon` key never touches Storage. If the Supabase env
+vars are absent, upload UI shows a graceful "storage not configured" notice and
+the rest of the app is unaffected.
+
+> RLS note: this app authenticates with its own cookie sessions and reaches
+> Postgres through Prisma (the database owner role), so per-table Postgres RLS
+> policies would not apply to that connection. Authorization is enforced in
+> application code, scoped per candidate/employer — the same pattern throughout
+> the app. Moving auth to Supabase Auth + anon-key access (to make Postgres RLS
+> meaningful) is a deliberate, larger piece of future work.
+
+## Deploying to Vercel (with Neon or Supabase Postgres)
 
 The app is configured for Vercel. `vercel.json` sets the build command to
 `prisma generate && prisma migrate deploy && next build`, so migrations are
@@ -207,6 +254,8 @@ prisma/
 | `npm run db:push`   | Push schema to the database (no migration history) |
 | `npm run db:seed`   | Seed demo data                           |
 | `npm run db:reset`  | `prisma migrate reset` — re-apply migrations + reseed |
+| `npm run storage:setup` | Create the private Supabase Storage buckets |
+| `npm run storage:check` | End-to-end Supabase Storage connectivity check |
 
 ## Tests
 

@@ -259,7 +259,7 @@ async function main() {
           sentDaysAgo: 12,
           receivedDaysAgo: 4,
           responseText:
-            "I confirm she was employed as a Senior Support Worker from March 2019 to date. Conduct and professional integrity excellent; attendance reliable; no safeguarding or child protection concerns; no disciplinary or capability proceedings. Suitable to work with children and vulnerable young people. I would re-employ her.",
+            "I confirm she was employed as a {ROLE} from March 2019 to date. Conduct and professional integrity excellent; attendance reliable; no safeguarding or child protection concerns; no disciplinary or capability proceedings. Suitable to work with children and vulnerable young people. I would re-employ her.",
         },
         { type: "Previous employer", name: "Riverside Children's Services", status: "SENT", sentDaysAgo: 10 },
       ],
@@ -319,11 +319,14 @@ async function main() {
     });
 
     for (const r of spec.refs) {
+      // Demo reference text can reference the candidate's actual role via a
+      // {ROLE} placeholder, so the analyser sees a consistent job title.
+      const responseText = r.responseText?.replace(/\{ROLE\}/g, cand.roleType) ?? null;
       let quality: string | null = null;
       let qualityNotes: string | null = null;
       let concern = false;
-      if (r.responseText) {
-        const a = analyseReference(r.responseText, { jobTitle: cand.roleType });
+      if (responseText) {
+        const a = analyseReference(responseText, { jobTitle: cand.roleType });
         quality = a.status;
         qualityNotes = a.explanation;
         concern = a.concernDetected || a.contradiction;
@@ -337,7 +340,7 @@ async function main() {
           sentAt: r.sentDaysAgo ? new Date(now - r.sentDaysAgo * day) : null,
           chaser1At: r.sentDaysAgo ? new Date(now - (r.sentDaysAgo - 7) * day) : null,
           receivedAt: r.receivedDaysAgo ? new Date(now - r.receivedDaysAgo * day) : null,
-          responseText: r.responseText ?? null,
+          responseText,
           qualityStatus: quality,
           qualityNotes,
           concernFlag: concern,

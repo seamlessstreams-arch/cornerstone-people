@@ -14,6 +14,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force",
     "storage:setup": "tsx scripts/setup-storage.ts",
+    "storage:check": "tsx scripts/check-storage.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {
