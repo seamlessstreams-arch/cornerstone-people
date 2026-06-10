@@ -87,10 +87,54 @@ pre-verified references — then two homes onboarding into a stocked pool.
 
 ### Trust infrastructure (§5)
 
-Candidate-side **reference verification only** (`Reference`,
-`app/verify-reference/[token]`). We deliberately do **not** build the
-cross-employer reference bank (GDPR + defamation exposure) — no ratings or
-comments about referees are ever stored.
+Candidate-side **reference verification** (`Reference`,
+`app/verify-reference/[token]`) lets a candidate carry pre-verified references.
+
+## Safer Recruitment OS
+
+Once an employer and candidate **match** (identity unlocked), the employer can
+open a **safer-recruitment case** and run pre-employment checks. This is the
+sector-specific layer that makes the product an operating system, not a job
+board.
+
+- **Case pipeline** (`/employer/safer-recruitment`) — every matched candidate
+  moves through ordered stages (application → checks → reference/DBS/gap holds →
+  RM/RI review → cleared / exceptional supervised start / rejected). The
+  dashboard surfaces holds, overdue chasers, risk alerts and average days to
+  reference.
+- **Reference requests & chasers** — create a request, mark it sent (auto-
+  schedules 7/14/21-day chasers), record the response. Professional,
+  safeguarding-aware **templates** (`lib/reference-templates.ts`) for ten
+  scenarios; with no email key the UI offers **copy email text**.
+- **Reference quality analyser** (`lib/safer-recruitment.ts`,
+  `analyseReference`) — rule-based, returns
+  strong/adequate/basic/incomplete/concerning/contradictory/requires-human-review.
+  Concern language and missing safeguarding comments **always** escalate to a
+  human. The analyser output is stored **separately** from the human
+  disposition.
+- **Employment gap checker** (`checkEmploymentGaps`) — flags gaps, overlaps,
+  short roles, agency/self-employment/education periods and missing reasons.
+- **DBS / right-to-work** workflow — evidence fields only (no live DBS API), with
+  a "risk review required" gate.
+- **Reference bank** (`/employer/reference-bank`) — an **employer-scoped**,
+  reusable directory of referee organisations and how they handle requests
+  (HR contact, portal link, preferred method, chase pattern, factual-only flag).
+  This stores **factual process/contact data the employer maintains for
+  itself** — never cross-employer opinions or ratings about candidates, which
+  remain out of scope for GDPR/defamation reasons.
+- **Human-in-the-loop by construction** — clear / reject / exceptional-start
+  stages require a **named** sign-off and are never set automatically.
+  `assessClearance` reports readiness but never clears anyone.
+- **AI-ready, safe by default** (`lib/ai.ts`) — eight planned agents, all
+  returning labelled *"AI-supported draft/recommendation"*. With no API key
+  every agent falls back to the deterministic rule-based output. AI never
+  decides, never uses protected characteristics, and every AI-assisted action is
+  logged.
+- **Audit trail** (`AuditLog`, `lib/audit.ts`) — every important action is
+  recorded (append-only).
+
+The pure logic (analyser, gap checker, clearance gate) is unit-tested in
+`tests/safer-recruitment.test.ts`.
 
 ## Deploying to Vercel (with Neon Postgres)
 
@@ -129,19 +173,26 @@ app/
   candidate/                   candidate area (dashboard, profile, references,
                                browse, blocks, matches)
   employer/                    employer area (dashboard, profile, positions,
-                               browse, market, matches)
+                               browse, market, matches, safer-recruitment,
+                               reference-bank)
   actions/                     server actions (auth, candidate, employer,
-                               connection, reference)
+                               connection, reference, safer-recruitment)
 lib/
   constants.ts                 controlled vocabularies + enum-like values
   db.ts                        Prisma client
   session.ts                   cookie session helpers
   auth.ts                      route guards (requireCandidate / requireEmployer)
   matching.ts                  the core: interest, matches, anonymised cards
+  safer-recruitment.ts         pure logic: reference analyser, gap checker,
+                               clearance gate (unit-tested)
+  safer-recruitment-data.ts    employer-scoped case queries + dashboard stats
+  reference-templates.ts       ten professional reference/chaser/consent templates
+  audit.ts                     append-only audit logging
+  ai.ts                        AI agent architecture (rule-based fallback)
 components/                    shared UI
 prisma/
   schema.prisma                data model
-  seed.ts                      cold-start demo data
+  seed.ts                      cold-start demo data + safer-recruitment cases
 ```
 
 ## Scripts

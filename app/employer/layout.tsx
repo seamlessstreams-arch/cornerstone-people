@@ -8,6 +8,8 @@ const links = [
   { href: "/employer/browse", label: "Browse candidates" },
   { href: "/employer/market", label: "Market" },
   { href: "/employer/matches", label: "Matches" },
+  { href: "/employer/safer-recruitment", label: "Safer recruitment" },
+  { href: "/employer/reference-bank", label: "Reference bank" },
 ];
 
 export default async function EmployerLayout({

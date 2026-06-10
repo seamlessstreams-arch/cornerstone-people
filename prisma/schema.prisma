@@ -77,6 +77,7 @@ model Candidate {
   interests      Interest[]
   blocks         Block[]
   matches        Match[]
+  saferCases     SaferRecruitmentCase[]
 }
 
 // Candidate-side reference verification ONLY.
@@ -123,6 +124,8 @@ model Employer {
   interests Interest[]
   blocks    Block[]
   matches   Match[]
+  saferCases      SaferRecruitmentCase[]
+  referenceBank   ReferenceBankEntry[]
 }
 
 model Position {
@@ -181,7 +184,8 @@ model Match {
   interviewRequestedBy String? // "CANDIDATE" | "EMPLOYER"
   interviewRequestedAt DateTime?
 
-  messages Message[]
+  messages  Message[]
+  saferCase SaferRecruitmentCase?
 
   @@unique([candidateId, employerId])
 }
@@ -193,4 +197,175 @@ model Message {
   senderRole String  // "CANDIDATE" | "EMPLOYER"
   body      String
   createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Safer Recruitment OS
+//
+// A case is opened by an employer AFTER a mutual match (identity unlocked), so
+// every case maps 1:1 to a Match. The case is the spine that the references,
+// employment-gap review, DBS workflow and audit trail hang off. Nothing here
+// auto-decides appointment, rejection or "can start" — those stages require a
+// human to set them (see SR_HUMAN_SIGNOFF_STAGES in lib/constants).
+// ---------------------------------------------------------------------------
+
+model SaferRecruitmentCase {
+  id          String   @id @default(cuid())
+  matchId     String   @unique
+  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  employerId  String
+  employer    Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  stage       String  @default("APPLICATION_RECEIVED") // SR_STAGES
+  notes       String?
+
+  // Human sign-off record for the irreversible decisions. Stored separately
+  // from any AI/rule-based output (principle: store AI output and human
+  // decision separately).
+  clearedToStartBy String?
+  clearedToStartAt DateTime?
+  decisionBy       String?
+  decisionAt       DateTime?
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  references       ReferenceRequest[]
+  gapReview        EmploymentGapReview?
+  dbsCheck         DbsCheck?
+}
+
+// Reusable, employer-scoped referee / organisation contact details.
+// This is factual contact/process data the employer maintains for itself —
+// NOT cross-employer opinions about a candidate.
+model ReferenceBankEntry {
+  id         String   @id @default(cuid())
+  employerId String
+  employer   Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  organisationName String
+  organisationType String?
+  hrEmail          String?
+  hrPhone          String?
+  portalLink       String?
+  refereeName      String?
+  refereeRole      String?
+  refereeEmail     String?
+  refereePhone     String?
+  address          String?
+  preferredMethod  String?  // REFERENCE_REQUEST_METHODS
+  consentFormRequired Boolean @default(false)
+  phoneVerificationAccepted Boolean @default(false)
+  factualOnly      Boolean @default(false)
+  providesSafeguardingComment Boolean @default(false)
+  documentsRequired String?
+  chasePattern      String?
+  averageResponseDays Int?
+  reliabilityRating Int?     // 1–5, employer's own private note
+  lastUsedAt       DateTime?
+  notes            String?
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  requests ReferenceRequest[]
+}
+
+model ReferenceRequest {
+  id      String   @id @default(cuid())
+  caseId  String
+  case    SaferRecruitmentCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  bankEntryId String?
+  bankEntry   ReferenceBankEntry? @relation(fields: [bankEntryId], references: [id], onDelete: SetNull)
+
+  referenceType String          // REFERENCE_TYPES
+  refereeName   String
+  refereeEmail  String?
+  refereeOrg    String?
+  method        String?         // REFERENCE_REQUEST_METHODS
+  status        String @default("DRAFT") // REFERENCE_REQUEST_STATUS
+
+  consentRecorded Boolean @default(false)
+
+  sentAt        DateTime?
+  chaser1At     DateTime?
+  chaser2At     DateTime?
+  finalChaserAt DateTime?
+  receivedAt    DateTime?
+
+  verbalVerifiedBy String?
+  verbalVerifiedAt DateTime?
+
+  // Received reference content + analyser output (kept separate from the
+  // human disposition).
+  responseText  String?
+  qualityStatus String?         // REFERENCE_QUALITY (rule-based analyser)
+  qualityNotes  String?         // human-readable analyser explanation
+  disposition   String?         // REFERENCE_DISPOSITIONS (human decision)
+  concernFlag   Boolean @default(false)
+  rmReviewRequested Boolean @default(false)
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmploymentGapReview {
+  id      String @id @default(cuid())
+  caseId  String @unique
+  case    SaferRecruitmentCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  // JSON-encoded array of detected findings (from the rule-based checker).
+  findings String?
+  status   String @default("NEEDS_EXPLANATION") // EMPLOYMENT_GAP_STATUS
+  managerNotes String?
+
+  reviewedBy String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model DbsCheck {
+  id      String @id @default(cuid())
+  caseId  String @unique
+  case    SaferRecruitmentCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  status           String?  // e.g. "Clear", "Pending", "Awaiting certificate"
+  certificateDate  DateTime?
+  level            String?  // DBS_LEVELS
+  workforceType    String?  // DBS_WORKFORCE_TYPES
+  barredListChecked Boolean @default(false)
+  updateService    Boolean @default(false)
+  updateServiceConsent Boolean @default(false)
+  dateChecked      DateTime?
+  certificateSeen  Boolean @default(false)
+  riskReviewRequired Boolean @default(false)
+  notes            String?
+
+  checkedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Append-only audit trail for important actions (principle 9).
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?  // User.id, or null for system / token actions
+  actorEmail String?
+  actorRole  String?
+  action     String   // e.g. "REFERENCE_REQUEST_SENT"
+  entityType String?  // e.g. "SaferRecruitmentCase"
+  entityId   String?
+  summary    String?
+  meta       String?  // JSON details
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
 }
