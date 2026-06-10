@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useFormState, useFormStatus } from "react-dom";
 import { login } from "@/app/actions/auth";
 
@@ -31,9 +32,17 @@ export function LoginForm() {
         />
       </div>
       <div>
-        <label className="label" htmlFor="password">
-          Password
-        </label>
+        <div className="flex items-baseline justify-between">
+          <label className="label" htmlFor="password">
+            Password
+          </label>
+          <Link
+            href="/forgot-password"
+            className="text-xs font-medium text-brand-700 hover:underline"
+          >
+            Forgot password?
+          </Link>
+        </div>
         <input
           id="password"
           name="password"

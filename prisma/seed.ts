@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
+import { analyseReference } from "../lib/safer-recruitment";
 
 const prisma = new PrismaClient();
 
@@ -37,6 +38,12 @@ async function main() {
   console.log("Resetting demo data…");
   // Order matters for FK constraints.
   await prisma.message.deleteMany();
+  await prisma.referenceRequest.deleteMany();
+  await prisma.employmentGapReview.deleteMany();
+  await prisma.dbsCheck.deleteMany();
+  await prisma.saferRecruitmentCase.deleteMany();
+  await prisma.referenceBankEntry.deleteMany();
+  await prisma.auditLog.deleteMany();
   await prisma.match.deleteMany();
   await prisma.interest.deleteMany();
   await prisma.block.deleteMany();
@@ -51,6 +58,7 @@ async function main() {
 
   // --- Supply side first: 20 candidates, most with verified references -----
   console.log("Seeding candidates (supply side)…");
+  const candidates: { id: string; fullName: string; roleType: string }[] = [];
   for (let i = 0; i < 20; i++) {
     const first = pick(FIRST_NAMES, i);
     const last = pick(LAST_NAMES, i * 7);
@@ -75,6 +83,11 @@ async function main() {
           create: { email, passwordHash, role: "CANDIDATE" },
         },
       },
+    });
+    candidates.push({
+      id: candidate.id,
+      fullName: `${first} ${last}`,
+      roleType: pick(ROLES, i),
     });
 
     // 16 of 20 candidates are fully verified (2 references); a few are mid-way.
@@ -121,6 +134,7 @@ async function main() {
     },
   ];
 
+  const employers: { id: string; companyName: string }[] = [];
   for (const h of homes) {
     const employer = await prisma.employer.create({
       data: {
@@ -136,6 +150,7 @@ async function main() {
         user: { create: { email: h.email, passwordHash, role: "EMPLOYER" } },
       },
     });
+    employers.push({ id: employer.id, companyName: employer.companyName });
     await prisma.position.create({
       data: {
         employerId: employer.id,
@@ -144,6 +159,224 @@ async function main() {
         shiftPattern: h.shiftPattern,
         description:
           "Join a settled team supporting young people with complex needs. Experience welcome but values matter most.",
+      },
+    });
+  }
+
+  // --- Safer Recruitment OS demo data --------------------------------------
+  // A few candidates match with home1 and progress into pre-employment checks.
+  console.log("Seeding safer-recruitment cases…");
+  const home1 = employers[0];
+
+  // Reference bank: reusable referee directory for home1.
+  const bankSeed = [
+    {
+      organisationName: "Riverside Children's Services",
+      organisationType: "Local authority",
+      hrEmail: "references@riverside.gov.uk",
+      preferredMethod: "Reference portal",
+      portalLink: "https://riverside.gov.uk/references",
+      factualOnly: true,
+      providesSafeguardingComment: false,
+      chasePattern: "7 / 14 / 21 days",
+      notes: "Factual only — always follow up by phone for suitability.",
+    },
+    {
+      organisationName: "Brightway Residential",
+      organisationType: "Children's home provider",
+      hrEmail: "hr@brightway.co.uk",
+      refereeName: "Dawn Phillips",
+      refereeRole: "Registered Manager",
+      preferredMethod: "Email",
+      providesSafeguardingComment: true,
+      chasePattern: "7 / 14 days",
+    },
+    {
+      organisationName: "St Aidan's College",
+      organisationType: "Education / training",
+      hrEmail: "registry@staidans.ac.uk",
+      preferredMethod: "Email",
+      consentFormRequired: true,
+    },
+    {
+      organisationName: "FlexiCare Staffing",
+      organisationType: "Agency",
+      hrEmail: "compliance@flexicare.co.uk",
+      refereeName: "Compliance Team",
+      preferredMethod: "Email",
+      providesSafeguardingComment: true,
+      chasePattern: "3 / 7 days",
+    },
+    {
+      organisationName: "Meadow View Care",
+      organisationType: "Children's home provider",
+      hrEmail: "people@meadowview.co.uk",
+      refereeName: "Imran Saleh",
+      refereeRole: "Deputy Manager",
+      preferredMethod: "Phone",
+      phoneVerificationAccepted: true,
+    },
+    {
+      organisationName: "Northgate Youth Project",
+      organisationType: "Youth work",
+      hrEmail: "admin@northgateyouth.org",
+      preferredMethod: "Email",
+      notes: "Character/voluntary referee — not an employment reference.",
+    },
+  ];
+  for (const b of bankSeed) {
+    await prisma.referenceBankEntry.create({
+      data: { ...b, employerId: home1.id, createdBy: "home1@example.com", updatedBy: "home1@example.com" },
+    });
+  }
+
+  const now = Date.now();
+  const day = 86400000;
+  // Three cases at different stages.
+  const caseSpecs: {
+    candIndex: number;
+    stage: string;
+    refs: {
+      type: string;
+      name: string;
+      status: string;
+      sentDaysAgo?: number;
+      receivedDaysAgo?: number;
+      responseText?: string;
+    }[];
+    gapStatus?: string;
+    dbsSeen?: boolean;
+    riskReview?: boolean;
+  }[] = [
+    {
+      candIndex: 0,
+      stage: "REFERENCE_HOLD",
+      refs: [
+        {
+          type: "Current employer",
+          name: "Dawn Phillips (Brightway)",
+          status: "RECEIVED",
+          sentDaysAgo: 12,
+          receivedDaysAgo: 4,
+          responseText:
+            "I confirm she was employed as a {ROLE} from March 2019 to date. Conduct and professional integrity excellent; attendance reliable; no safeguarding or child protection concerns; no disciplinary or capability proceedings. Suitable to work with children and vulnerable young people. I would re-employ her.",
+        },
+        { type: "Previous employer", name: "Riverside Children's Services", status: "SENT", sentDaysAgo: 10 },
+      ],
+      gapStatus: "ACCEPTED",
+      dbsSeen: true,
+    },
+    {
+      candIndex: 1,
+      stage: "RM_REVIEW_REQUIRED",
+      refs: [
+        {
+          type: "Previous employer",
+          name: "Meadow View Care",
+          status: "RECEIVED",
+          sentDaysAgo: 20,
+          receivedDaysAgo: 9,
+          responseText:
+            "Employed 2021–2022 as support worker. There was a safeguarding concern raised and the matter was investigated. We would not re-employ.",
+        },
+      ],
+      gapStatus: "CONCERN",
+      dbsSeen: false,
+      riskReview: true,
+    },
+    {
+      candIndex: 4,
+      stage: "CHECKS_IN_PROGRESS",
+      refs: [
+        { type: "Children's workforce reference", name: "Brightway Residential", status: "DRAFT" },
+      ],
+      gapStatus: "NEEDS_EXPLANATION",
+      dbsSeen: false,
+    },
+  ];
+
+  for (const spec of caseSpecs) {
+    const cand = candidates[spec.candIndex];
+    // Form a mutual match first (both directions of interest).
+    await prisma.interest.create({
+      data: { candidateId: cand.id, employerId: home1.id, direction: "CANDIDATE" },
+    });
+    await prisma.interest.create({
+      data: { candidateId: cand.id, employerId: home1.id, direction: "EMPLOYER" },
+    });
+    const match = await prisma.match.create({
+      data: { candidateId: cand.id, employerId: home1.id },
+    });
+
+    const srCase = await prisma.saferRecruitmentCase.create({
+      data: {
+        matchId: match.id,
+        employerId: home1.id,
+        candidateId: cand.id,
+        stage: spec.stage,
+        createdBy: "home1@example.com",
+      },
+    });
+
+    for (const r of spec.refs) {
+      // Demo reference text can reference the candidate's actual role via a
+      // {ROLE} placeholder, so the analyser sees a consistent job title.
+      const responseText = r.responseText?.replace(/\{ROLE\}/g, cand.roleType) ?? null;
+      let quality: string | null = null;
+      let qualityNotes: string | null = null;
+      let concern = false;
+      if (responseText) {
+        const a = analyseReference(responseText, { jobTitle: cand.roleType });
+        quality = a.status;
+        qualityNotes = a.explanation;
+        concern = a.concernDetected || a.contradiction;
+      }
+      await prisma.referenceRequest.create({
+        data: {
+          caseId: srCase.id,
+          referenceType: r.type,
+          refereeName: r.name,
+          status: r.status,
+          sentAt: r.sentDaysAgo ? new Date(now - r.sentDaysAgo * day) : null,
+          chaser1At: r.sentDaysAgo ? new Date(now - (r.sentDaysAgo - 7) * day) : null,
+          receivedAt: r.receivedDaysAgo ? new Date(now - r.receivedDaysAgo * day) : null,
+          responseText,
+          qualityStatus: quality,
+          qualityNotes,
+          concernFlag: concern,
+          createdBy: "home1@example.com",
+        },
+      });
+    }
+
+    if (spec.gapStatus) {
+      await prisma.employmentGapReview.create({
+        data: {
+          caseId: srCase.id,
+          status: spec.gapStatus,
+          reviewedBy: "home1@example.com",
+        },
+      });
+    }
+    await prisma.dbsCheck.create({
+      data: {
+        caseId: srCase.id,
+        status: spec.dbsSeen ? "Clear" : "Pending",
+        certificateSeen: !!spec.dbsSeen,
+        barredListChecked: !!spec.dbsSeen,
+        riskReviewRequired: !!spec.riskReview,
+        checkedBy: "home1@example.com",
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actorEmail: "home1@example.com",
+        actorRole: "EMPLOYER",
+        action: "SR_CASE_OPENED",
+        entityType: "SaferRecruitmentCase",
+        entityId: srCase.id,
+        summary: `Seeded case for ${cand.fullName} at stage ${spec.stage}`,
       },
     });
   }
