@@ -29,6 +29,7 @@ export async function loadCase(employerId: string, caseId: string) {
       identityCheck: true,
       exceptionalStart: true,
       qualifications: { orderBy: { createdAt: "asc" } },
+      selfDeclaration: true,
     },
   });
   return c;
@@ -75,6 +76,7 @@ type CaseForCompliance = {
   } | null;
   gapReview: { status: string } | null;
   qualifications?: { required: boolean; certificateSeen: boolean }[];
+  selfDeclaration?: { disclosureFlagged: boolean; reviewedAt: Date | null } | null;
 };
 
 export function caseCompliance(c: CaseForCompliance): RagReport {
@@ -130,6 +132,8 @@ export function caseCompliance(c: CaseForCompliance): RagReport {
     requiredQualificationOutstanding: (c.qualifications ?? []).some(
       (q) => q.required && !q.certificateSeen
     ),
+    unreviewedDisclosure:
+      !!c.selfDeclaration?.disclosureFlagged && !c.selfDeclaration?.reviewedAt,
   });
 }
 
@@ -148,6 +152,7 @@ export async function dashboardStats(employerId: string) {
       dbsCheck: true,
       identityCheck: true,
       qualifications: true,
+      selfDeclaration: true,
     },
     orderBy: { updatedAt: "desc" },
   });
@@ -290,6 +295,7 @@ export async function staffFileIndex(employerId: string): Promise<StaffFileRow[]
       dbsCheck: true,
       identityCheck: true,
       qualifications: true,
+      selfDeclaration: true,
     },
     orderBy: { candidate: { fullName: "asc" } },
   });

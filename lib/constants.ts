@@ -232,6 +232,22 @@ export const QUALIFICATION_KINDS = [
 ] as const;
 export type QualificationKind = (typeof QUALIFICATION_KINDS)[number];
 
+// Candidate self-declaration (criminal self-disclosure) — requested at the
+// shortlisted stage. Any disclosure is routed to a named manager for a
+// confidential review before interview/offer.
+export const SELF_DECLARATION_STATUS = [
+  "PENDING",
+  "SUBMITTED",
+  "REVIEWED",
+] as const;
+export type SelfDeclarationStatus = (typeof SELF_DECLARATION_STATUS)[number];
+
+export const SELF_DECLARATION_OUTCOMES = [
+  "CLEAR",
+  "DISCLOSURE_ACCEPTED",
+  "ESCALATED",
+] as const;
+
 // The hard supervision controls that must all be in place before an
 // exceptional supervised start can be approved.
 export const EXCEPTIONAL_START_CONTROLS = [

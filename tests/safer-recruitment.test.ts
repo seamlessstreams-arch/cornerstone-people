@@ -283,3 +283,20 @@ test("computeRag: a required qualification outstanding shows as outstanding", ()
   assert.ok(r.outstanding.some((o) => /qualification/i.test(o)));
   assert.notEqual(r.rag, "GREEN");
 });
+
+test("computeRag: an unreviewed self-declaration disclosure is a blocker (RED)", () => {
+  const r = computeRag({
+    ...baseRag,
+    stage: "CLEARED_TO_START",
+    humanSignedOff: true,
+    dbsCertificateSeen: true,
+    identityVerified: true,
+    rightToWorkVerified: true,
+    employmentGapsReviewed: true,
+    referencesReceived: 2,
+    unreviewedDisclosure: true,
+  });
+  assert.equal(r.rag, "RED");
+  assert.equal(r.startEligibility, "NOT_ELIGIBLE");
+  assert.ok(r.blockers.some((b) => /disclosure/i.test(b)));
+});

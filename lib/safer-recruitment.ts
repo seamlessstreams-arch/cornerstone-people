@@ -388,6 +388,8 @@ export type RagInputs = {
   employmentGapConcern: boolean;
   /** A qualification marked required for the post hasn't been evidenced yet. */
   requiredQualificationOutstanding?: boolean;
+  /** The candidate's self-declaration disclosed something not yet reviewed. */
+  unreviewedDisclosure?: boolean;
 };
 
 export type RagReport = {
@@ -409,6 +411,8 @@ export function computeRag(i: RagInputs): RagReport {
     blockers.push("DBS disclosure needs a risk review");
   if (i.employmentGapConcern)
     blockers.push("Employment-gap review raised a concern");
+  if (i.unreviewedDisclosure)
+    blockers.push("Self-declaration disclosure awaiting manager review");
 
   // Mandatory evidence still outstanding.
   if (!i.dbsCertificateSeen) outstanding.push("DBS certificate not yet seen");

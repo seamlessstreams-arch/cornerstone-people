@@ -515,6 +515,62 @@ export async function deleteQualification(formData: FormData) {
   revalidatePath(`/employer/safer-recruitment/${q.caseId}`);
 }
 
+// --- Candidate self-declaration -----------------------------------------
+
+export async function sendSelfDeclarationLink(formData: FormData) {
+  const { employer, user } = await requireEmployer();
+  const caseId = String(formData.get("caseId") ?? "");
+  const c = await ownCase(employer.id, caseId);
+
+  const existing = await prisma.selfDeclaration.findUnique({
+    where: { caseId: c.id },
+  });
+  const token = existing?.publicToken ?? randomBytes(24).toString("hex");
+  const tokenExpiresAt = new Date(Date.now() + 7 * 86400000);
+
+  await prisma.selfDeclaration.upsert({
+    where: { caseId: c.id },
+    create: { caseId: c.id, status: "PENDING", publicToken: token, tokenExpiresAt },
+    // Re-sending revives the link; never wipe a submitted declaration.
+    update: { publicToken: token, tokenExpiresAt },
+  });
+  await logAudit({
+    actor: user,
+    action: "SELF_DECLARATION_LINK_SENT",
+    entityType: "SaferRecruitmentCase",
+    entityId: c.id,
+    summary: "Self-declaration link issued to candidate",
+  });
+  revalidatePath(`/employer/safer-recruitment/${c.id}`);
+}
+
+export async function reviewSelfDeclaration(formData: FormData) {
+  const { employer, user } = await requireEmployer();
+  const caseId = String(formData.get("caseId") ?? "");
+  const c = await ownCase(employer.id, caseId);
+  const sd = await prisma.selfDeclaration.findUnique({ where: { caseId: c.id } });
+  if (!sd) return;
+
+  await prisma.selfDeclaration.update({
+    where: { caseId: c.id },
+    data: {
+      status: "REVIEWED",
+      reviewedBy: user.email,
+      reviewedAt: new Date(),
+      reviewOutcome: str(formData, "reviewOutcome"),
+      managerNotes: str(formData, "managerNotes"),
+    },
+  });
+  await logAudit({
+    actor: user,
+    action: "SELF_DECLARATION_REVIEWED",
+    entityType: "SaferRecruitmentCase",
+    entityId: c.id,
+    summary: `Self-declaration reviewed (${str(formData, "reviewOutcome") ?? "—"})`,
+  });
+  revalidatePath(`/employer/safer-recruitment/${c.id}`);
+}
+
 // --- Reference bank ------------------------------------------------------
 
 export async function saveReferenceBankEntry(formData: FormData) {

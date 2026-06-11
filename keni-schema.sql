@@ -327,6 +327,35 @@ CREATE TABLE "QualificationRecord" (
 );
 
 -- CreateTable
+CREATE TABLE "SelfDeclaration" (
+    "id" TEXT NOT NULL,
+    "caseId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "publicToken" TEXT,
+    "tokenExpiresAt" TIMESTAMP(3),
+    "hasUnspentConvictions" BOOLEAN,
+    "hasCautionsOrPending" BOOLEAN,
+    "isBarred" BOOLEAN,
+    "isDisqualified" BOOLEAN,
+    "livedOverseas" BOOLEAN,
+    "disclosureDetails" TEXT,
+    "overseasDetails" TEXT,
+    "declaredTruthful" BOOLEAN NOT NULL DEFAULT false,
+    "submittedAt" TIMESTAMP(3),
+    "submittedIp" TEXT,
+    "submittedUserAgent" TEXT,
+    "disclosureFlagged" BOOLEAN NOT NULL DEFAULT false,
+    "reviewedBy" TEXT,
+    "reviewedAt" TIMESTAMP(3),
+    "reviewOutcome" TEXT,
+    "managerNotes" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SelfDeclaration_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "AuditLog" (
     "id" TEXT NOT NULL,
     "actorId" TEXT,
@@ -430,6 +459,12 @@ CREATE UNIQUE INDEX "ExceptionalStartAssessment_caseId_key" ON "ExceptionalStart
 CREATE INDEX "QualificationRecord_caseId_idx" ON "QualificationRecord"("caseId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "SelfDeclaration_caseId_key" ON "SelfDeclaration"("caseId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SelfDeclaration_publicToken_key" ON "SelfDeclaration"("publicToken");
+
+-- CreateIndex
 CREATE INDEX "AuditLog_entityType_entityId_idx" ON "AuditLog"("entityType", "entityId");
 
 -- CreateIndex
@@ -518,6 +553,9 @@ ALTER TABLE "ExceptionalStartAssessment" ADD CONSTRAINT "ExceptionalStartAssessm
 
 -- AddForeignKey
 ALTER TABLE "QualificationRecord" ADD CONSTRAINT "QualificationRecord_caseId_fkey" FOREIGN KEY ("caseId") REFERENCES "SaferRecruitmentCase"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SelfDeclaration" ADD CONSTRAINT "SelfDeclaration_caseId_fkey" FOREIGN KEY ("caseId") REFERENCES "SaferRecruitmentCase"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "StoredFile" ADD CONSTRAINT "StoredFile_candidateId_fkey" FOREIGN KEY ("candidateId") REFERENCES "Candidate"("id") ON DELETE CASCADE ON UPDATE CASCADE;
