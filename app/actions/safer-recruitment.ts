@@ -444,6 +444,72 @@ export async function approveExceptionalStart(formData: FormData) {
   revalidatePath(`/employer/safer-recruitment/${c.id}`);
 }
 
+// --- Qualifications & training ------------------------------------------
+
+export async function addQualification(formData: FormData) {
+  const { employer, user } = await requireEmployer();
+  const caseId = String(formData.get("caseId") ?? "");
+  const c = await ownCase(employer.id, caseId);
+  const title = str(formData, "title");
+  if (!title) {
+    revalidatePath(`/employer/safer-recruitment/${c.id}`);
+    return;
+  }
+
+  await prisma.qualificationRecord.create({
+    data: {
+      caseId: c.id,
+      title,
+      kind: str(formData, "kind"),
+      required: bool(formData, "required"),
+      certificateSeen: bool(formData, "certificateSeen"),
+      verifiedWithIssuer: bool(formData, "verifiedWithIssuer"),
+      reference: str(formData, "reference"),
+      awardedOn: date(formData, "awardedOn"),
+      expiresOn: date(formData, "expiresOn"),
+      notes: str(formData, "notes"),
+    },
+  });
+  await logAudit({
+    actor: user,
+    action: "QUALIFICATION_ADDED",
+    entityType: "SaferRecruitmentCase",
+    entityId: c.id,
+    summary: `Qualification recorded: ${title}`,
+  });
+  revalidatePath(`/employer/safer-recruitment/${c.id}`);
+}
+
+// Find a qualification that belongs to one of this employer's cases.
+async function ownQualification(employerId: string, qualId: string | null) {
+  if (!qualId) return null;
+  return prisma.qualificationRecord.findFirst({
+    where: { id: qualId, case: { employerId } },
+  });
+}
+
+export async function setQualificationStatus(formData: FormData) {
+  const { employer } = await requireEmployer();
+  const q = await ownQualification(employer.id, str(formData, "qualId"));
+  if (!q) return;
+  await prisma.qualificationRecord.update({
+    where: { id: q.id },
+    data: {
+      certificateSeen: bool(formData, "certificateSeen"),
+      verifiedWithIssuer: bool(formData, "verifiedWithIssuer"),
+    },
+  });
+  revalidatePath(`/employer/safer-recruitment/${q.caseId}`);
+}
+
+export async function deleteQualification(formData: FormData) {
+  const { employer } = await requireEmployer();
+  const q = await ownQualification(employer.id, str(formData, "qualId"));
+  if (!q) return;
+  await prisma.qualificationRecord.delete({ where: { id: q.id } });
+  revalidatePath(`/employer/safer-recruitment/${q.caseId}`);
+}
+
 // --- Reference bank ------------------------------------------------------
 
 export async function saveReferenceBankEntry(formData: FormData) {

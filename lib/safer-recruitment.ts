@@ -386,6 +386,8 @@ export type RagInputs = {
   rightToWorkVerified: boolean;
   employmentGapsReviewed: boolean;
   employmentGapConcern: boolean;
+  /** A qualification marked required for the post hasn't been evidenced yet. */
+  requiredQualificationOutstanding?: boolean;
 };
 
 export type RagReport = {
@@ -420,6 +422,8 @@ export function computeRag(i: RagInputs): RagReport {
   } else if (i.referenceNeedsClarification) {
     outstanding.push("A reference needs clarification");
   }
+  if (i.requiredQualificationOutstanding)
+    outstanding.push("Required qualification not evidenced");
 
   let rag: Rag;
   let startEligibility: StartEligibility;

@@ -222,6 +222,16 @@ export const EXCEPTIONAL_START_STATUS_LABELS: Record<
 
 export const RISK_LEVELS = ["low", "moderate", "high"] as const;
 
+// Qualifications, mandatory training and professional registrations recorded on
+// a staff file. "Required" ones must be evidenced before a start.
+export const QUALIFICATION_KINDS = [
+  "Qualification",
+  "Mandatory training",
+  "Professional registration",
+  "Other",
+] as const;
+export type QualificationKind = (typeof QUALIFICATION_KINDS)[number];
+
 // The hard supervision controls that must all be in place before an
 // exceptional supervised start can be approved.
 export const EXCEPTIONAL_START_CONTROLS = [

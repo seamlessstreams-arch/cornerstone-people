@@ -269,3 +269,17 @@ test("assessExceptionalStart: empty assessment lists every requirement", () => {
   assert.equal(r.readyForApproval, false);
   assert.ok(r.requirements.length >= 9);
 });
+
+test("computeRag: a required qualification outstanding shows as outstanding", () => {
+  const r = computeRag({
+    ...baseRag,
+    dbsCertificateSeen: true,
+    identityVerified: true,
+    rightToWorkVerified: true,
+    employmentGapsReviewed: true,
+    referencesReceived: 2,
+    requiredQualificationOutstanding: true,
+  });
+  assert.ok(r.outstanding.some((o) => /qualification/i.test(o)));
+  assert.notEqual(r.rag, "GREEN");
+});

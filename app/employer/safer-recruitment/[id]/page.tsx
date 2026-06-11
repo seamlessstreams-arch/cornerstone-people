@@ -35,6 +35,7 @@ import {
   EXCEPTIONAL_START_STATUS_LABELS,
   EXCEPTIONAL_START_CONTROLS,
   RISK_LEVELS,
+  QUALIFICATION_KINDS,
   type SrStage,
   type ExceptionalStartStatus,
 } from "@/lib/constants";
@@ -49,6 +50,9 @@ import {
   saveIdentityRightToWork,
   saveExceptionalStart,
   approveExceptionalStart,
+  addQualification,
+  setQualificationStatus,
+  deleteQualification,
 } from "@/app/actions/safer-recruitment";
 
 export const dynamic = "force-dynamic";
@@ -487,6 +491,90 @@ export default async function CaseDetail({ params }: { params: { id: string } })
             <textarea name="notes" defaultValue={c.dbsCheck?.notes ?? ""} rows={2} placeholder="Notes" className="input col-span-2" />
             <button className="btn-primary col-span-2 px-3 py-2 text-sm">Save DBS / readiness</button>
           </form>
+        </section>
+
+        {/* Qualifications & training */}
+        <section className="card">
+          <h2 className="font-semibold text-stone-900">Qualifications &amp; training</h2>
+          <p className="mt-1 text-xs text-stone-400">
+            Record qualifications, mandatory training and registrations. Anything
+            marked <em>required</em> must be evidenced before a start.
+          </p>
+
+          <div className="mt-3 space-y-2">
+            {c.qualifications.length === 0 ? (
+              <p className="text-sm text-stone-500">Nothing recorded yet.</p>
+            ) : (
+              c.qualifications.map((q) => (
+                <div key={q.id} className="rounded-lg border border-stone-200 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="text-sm font-medium text-stone-900">
+                      {q.title}
+                      {q.kind ? (
+                        <span className="ml-2 text-xs font-normal text-stone-400">{q.kind}</span>
+                      ) : null}
+                      {q.required ? (
+                        <span className="ml-2 rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-stone-500">
+                          required
+                        </span>
+                      ) : null}
+                    </div>
+                    <form action={deleteQualification}>
+                      <input type="hidden" name="qualId" value={q.id} />
+                      <button className="text-xs text-stone-400 hover:text-rose-600">Remove</button>
+                    </form>
+                  </div>
+                  <div className="mt-1 text-xs text-stone-400">
+                    {q.reference ? `Ref ${q.reference} • ` : ""}
+                    awarded {fmt(q.awardedOn)} • expires {fmt(q.expiresOn)}
+                  </div>
+                  <form action={setQualificationStatus} className="mt-2 flex flex-wrap items-center gap-3">
+                    <input type="hidden" name="qualId" value={q.id} />
+                    <label className="flex items-center gap-1 text-xs text-stone-600">
+                      <input type="checkbox" name="certificateSeen" defaultChecked={q.certificateSeen} /> Certificate seen
+                    </label>
+                    <label className="flex items-center gap-1 text-xs text-stone-600">
+                      <input type="checkbox" name="verifiedWithIssuer" defaultChecked={q.verifiedWithIssuer} /> Verified with issuer
+                    </label>
+                    <button className="btn-secondary px-2.5 py-1 text-xs">Save</button>
+                  </form>
+                </div>
+              ))
+            )}
+          </div>
+
+          <details className="mt-3">
+            <summary className="cursor-pointer text-sm font-medium text-brand-700">
+              + Add qualification / training
+            </summary>
+            <form action={addQualification} className="mt-3 grid grid-cols-2 gap-2">
+              <input type="hidden" name="caseId" value={c.id} />
+              <input name="title" placeholder="Title" required className="input col-span-2" />
+              <select name="kind" defaultValue="" className="input">
+                <option value="">Type…</option>
+                {QUALIFICATION_KINDS.map((k) => (
+                  <option key={k} value={k}>{k}</option>
+                ))}
+              </select>
+              <input name="reference" placeholder="Certificate no. / URN" className="input" />
+              <div>
+                <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-stone-400">Awarded</label>
+                <input type="date" name="awardedOn" className="input" />
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-stone-400">Expires</label>
+                <input type="date" name="expiresOn" className="input" />
+              </div>
+              <label className="flex items-center gap-2 text-xs text-stone-600">
+                <input type="checkbox" name="required" /> Required for this post
+              </label>
+              <label className="flex items-center gap-2 text-xs text-stone-600">
+                <input type="checkbox" name="certificateSeen" /> Certificate seen
+              </label>
+              <textarea name="notes" rows={2} placeholder="Notes" className="input col-span-2" />
+              <button className="btn-primary col-span-2 px-3 py-2 text-sm">Add to staff file</button>
+            </form>
+          </details>
         </section>
       </div>
 
