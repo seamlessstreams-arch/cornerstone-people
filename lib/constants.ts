@@ -195,3 +195,38 @@ export const DBS_LEVELS = [
   "Standard",
   "Basic",
 ] as const;
+
+// Exceptional / supervised start — used only when a candidate must start before
+// every pre-employment check is complete. It is never automatic: it needs a
+// risk assessment, a supervision plan with hard controls, and a named RM/RI
+// approval.
+export const EXCEPTIONAL_START_STATUS = [
+  "DRAFT",
+  "PENDING_APPROVAL",
+  "APPROVED",
+  "DECLINED",
+  "ENDED",
+] as const;
+export type ExceptionalStartStatus = (typeof EXCEPTIONAL_START_STATUS)[number];
+
+export const EXCEPTIONAL_START_STATUS_LABELS: Record<
+  ExceptionalStartStatus,
+  string
+> = {
+  DRAFT: "Draft",
+  PENDING_APPROVAL: "Pending RM/RI approval",
+  APPROVED: "Approved — supervised",
+  DECLINED: "Declined",
+  ENDED: "Ended",
+};
+
+export const RISK_LEVELS = ["low", "moderate", "high"] as const;
+
+// The hard supervision controls that must all be in place before an
+// exceptional supervised start can be approved.
+export const EXCEPTIONAL_START_CONTROLS = [
+  { key: "noSoleCharge", label: "Never in sole charge of children" },
+  { key: "noUnsupervisedAccess", label: "No unsupervised access" },
+  { key: "noIntimateCare", label: "No intimate / personal care" },
+  { key: "noOvernight", label: "No overnight or off-site responsibility" },
+] as const;

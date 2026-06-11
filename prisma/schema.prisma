@@ -241,6 +241,7 @@ model SaferRecruitmentCase {
   gapReview        EmploymentGapReview?
   dbsCheck         DbsCheck?
   identityCheck    IdentityRightToWorkCheck?
+  exceptionalStart ExceptionalStartAssessment?
   storedFiles      StoredFile[]
 }
 
@@ -385,6 +386,39 @@ model IdentityRightToWorkCheck {
   checkedBy String?
   checkedAt DateTime?
   notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Risk assessment + supervision plan for an exceptional (supervised) start —
+// where a candidate begins before every check is complete. Approval is a named
+// RM/RI act and requires all hard supervision controls to be in place; this is
+// never set automatically.
+model ExceptionalStartAssessment {
+  id     String               @id @default(cuid())
+  caseId String               @unique
+  case   SaferRecruitmentCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  status String @default("DRAFT")
+
+  businessReason    String?
+  outstandingChecks String? // snapshot of what is still outstanding
+  riskLevel         String? // low | moderate | high
+  riskMitigation    String?
+
+  // Hard supervision controls
+  supervisorName       String?
+  noSoleCharge         Boolean @default(false)
+  noUnsupervisedAccess Boolean @default(false)
+  noIntimateCare       Boolean @default(false)
+  noOvernight          Boolean @default(false)
+  supervisionNotes     String?
+  reviewDate           DateTime?
+
+  // Named RM/RI approval (the human gate)
+  approvedBy String?
+  approvedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

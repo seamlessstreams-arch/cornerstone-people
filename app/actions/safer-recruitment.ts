@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireEmployer } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { analyseReference } from "@/lib/safer-recruitment";
+import { analyseReference, assessExceptionalStart } from "@/lib/safer-recruitment";
 import {
   SR_STAGES,
   SR_HUMAN_SIGNOFF_STAGES,
@@ -352,6 +352,94 @@ export async function saveIdentityRightToWork(formData: FormData) {
     entityType: "SaferRecruitmentCase",
     entityId: c.id,
     summary: `Identity/right-to-work updated (identity seen: ${payload.identityDocumentSeen}, RTW verified: ${payload.rightToWorkVerified})`,
+  });
+  revalidatePath(`/employer/safer-recruitment/${c.id}`);
+}
+
+// --- Exceptional / supervised start -------------------------------------
+
+export async function saveExceptionalStart(formData: FormData) {
+  const { employer, user } = await requireEmployer();
+  const caseId = String(formData.get("caseId") ?? "");
+  const c = await ownCase(employer.id, caseId);
+
+  const payload = {
+    businessReason: str(formData, "businessReason"),
+    outstandingChecks: str(formData, "outstandingChecks"),
+    riskLevel: str(formData, "riskLevel"),
+    riskMitigation: str(formData, "riskMitigation"),
+    supervisorName: str(formData, "supervisorName"),
+    noSoleCharge: bool(formData, "noSoleCharge"),
+    noUnsupervisedAccess: bool(formData, "noUnsupervisedAccess"),
+    noIntimateCare: bool(formData, "noIntimateCare"),
+    noOvernight: bool(formData, "noOvernight"),
+    supervisionNotes: str(formData, "supervisionNotes"),
+    reviewDate: date(formData, "reviewDate"),
+  };
+
+  await prisma.exceptionalStartAssessment.upsert({
+    where: { caseId: c.id },
+    // Saving the plan never approves it; a fresh plan is always a DRAFT.
+    create: { caseId: c.id, status: "DRAFT", ...payload },
+    update: payload,
+  });
+  await logAudit({
+    actor: user,
+    action: "EXCEPTIONAL_START_SAVED",
+    entityType: "SaferRecruitmentCase",
+    entityId: c.id,
+    summary: `Exceptional-start plan updated (risk: ${payload.riskLevel ?? "—"})`,
+  });
+  revalidatePath(`/employer/safer-recruitment/${c.id}`);
+}
+
+// Record a named RM/RI approval. This is the human gate — it refuses to approve
+// unless the risk assessment and every hard supervision control are in place.
+export async function approveExceptionalStart(formData: FormData) {
+  const { employer, user } = await requireEmployer();
+  const caseId = String(formData.get("caseId") ?? "");
+  const approverName = str(formData, "approverName");
+  const c = await ownCase(employer.id, caseId);
+
+  const existing = await prisma.exceptionalStartAssessment.findUnique({
+    where: { caseId: c.id },
+  });
+  if (!existing || !approverName) {
+    revalidatePath(`/employer/safer-recruitment/${c.id}`);
+    return;
+  }
+
+  const readiness = assessExceptionalStart({
+    businessReason: existing.businessReason,
+    riskLevel: existing.riskLevel,
+    riskMitigation: existing.riskMitigation,
+    supervisorName: existing.supervisorName,
+    noSoleCharge: existing.noSoleCharge,
+    noUnsupervisedAccess: existing.noUnsupervisedAccess,
+    noIntimateCare: existing.noIntimateCare,
+    noOvernight: existing.noOvernight,
+    reviewDate: existing.reviewDate,
+  });
+  if (!readiness.readyForApproval) {
+    // Not ready — leave as pending and record the attempt, never approve.
+    await prisma.exceptionalStartAssessment.update({
+      where: { caseId: c.id },
+      data: { status: "PENDING_APPROVAL" },
+    });
+    revalidatePath(`/employer/safer-recruitment/${c.id}`);
+    return;
+  }
+
+  await prisma.exceptionalStartAssessment.update({
+    where: { caseId: c.id },
+    data: { status: "APPROVED", approvedBy: approverName, approvedAt: new Date() },
+  });
+  await logAudit({
+    actor: user,
+    action: "EXCEPTIONAL_START_APPROVED",
+    entityType: "SaferRecruitmentCase",
+    entityId: c.id,
+    summary: `Exceptional supervised start approved by ${approverName}`,
   });
   revalidatePath(`/employer/safer-recruitment/${c.id}`);
 }

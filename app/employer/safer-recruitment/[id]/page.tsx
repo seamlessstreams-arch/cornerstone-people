@@ -14,6 +14,7 @@ import {
   clearanceForCase,
   caseCompliance,
 } from "@/lib/safer-recruitment-data";
+import { assessExceptionalStart } from "@/lib/safer-recruitment";
 import {
   PageHeader,
   StatusBadge,
@@ -31,7 +32,11 @@ import {
   REFERENCE_DISPOSITIONS,
   DBS_LEVELS,
   DBS_WORKFORCE_TYPES,
+  EXCEPTIONAL_START_STATUS_LABELS,
+  EXCEPTIONAL_START_CONTROLS,
+  RISK_LEVELS,
   type SrStage,
+  type ExceptionalStartStatus,
 } from "@/lib/constants";
 import {
   setStage,
@@ -42,6 +47,8 @@ import {
   setReferenceDisposition,
   saveDbsCheck,
   saveIdentityRightToWork,
+  saveExceptionalStart,
+  approveExceptionalStart,
 } from "@/app/actions/safer-recruitment";
 
 export const dynamic = "force-dynamic";
@@ -70,6 +77,20 @@ export default async function CaseDetail({ params }: { params: { id: string } })
 
   const clearance = clearanceForCase(c);
   const compliance = caseCompliance(c);
+  const ex = c.exceptionalStart;
+  const exReadiness = ex
+    ? assessExceptionalStart({
+        businessReason: ex.businessReason,
+        riskLevel: ex.riskLevel,
+        riskMitigation: ex.riskMitigation,
+        supervisorName: ex.supervisorName,
+        noSoleCharge: ex.noSoleCharge,
+        noUnsupervisedAccess: ex.noUnsupervisedAccess,
+        noIntimateCare: ex.noIntimateCare,
+        noOvernight: ex.noOvernight,
+        reviewDate: ex.reviewDate,
+      })
+    : null;
   const candidateName = c.candidate.fullName ?? "Candidate";
 
   const caseDocs = await prisma.storedFile.findMany({
@@ -468,6 +489,134 @@ export default async function CaseDetail({ params }: { params: { id: string } })
           </form>
         </section>
       </div>
+
+      {/* Exceptional / supervised start */}
+      <section className="card mt-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-stone-900">
+            Exceptional / supervised start
+          </h2>
+          {ex ? (
+            <StatusBadge
+              status={ex.status === "APPROVED" ? "EXCEPTIONAL_SUPERVISED_START" : ex.status}
+              label={EXCEPTIONAL_START_STATUS_LABELS[ex.status as ExceptionalStartStatus]}
+            />
+          ) : null}
+        </div>
+        <HumanReviewRequiredBanner>
+          Only for when a candidate must start before every check is complete.
+          It is never automatic — it needs a risk assessment, every hard
+          supervision control in place, and a named RM/RI approval.
+        </HumanReviewRequiredBanner>
+
+        <form action={saveExceptionalStart} className="mt-3 grid gap-2 sm:grid-cols-2">
+          <input type="hidden" name="caseId" value={c.id} />
+          <textarea
+            name="businessReason"
+            defaultValue={ex?.businessReason ?? ""}
+            rows={2}
+            placeholder="Business reason for an early start"
+            className="input sm:col-span-2"
+          />
+          <select name="riskLevel" defaultValue={ex?.riskLevel ?? ""} className="input">
+            <option value="">Risk level…</option>
+            {RISK_LEVELS.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+          <input
+            type="date"
+            name="reviewDate"
+            defaultValue={
+              ex?.reviewDate ? new Date(ex.reviewDate).toISOString().slice(0, 10) : ""
+            }
+            className="input"
+          />
+          <textarea
+            name="riskMitigation"
+            defaultValue={ex?.riskMitigation ?? ""}
+            rows={2}
+            placeholder="How is the risk mitigated?"
+            className="input sm:col-span-2"
+          />
+          <input
+            name="supervisorName"
+            defaultValue={ex?.supervisorName ?? ""}
+            placeholder="Responsible supervisor (name & role)"
+            className="input sm:col-span-2"
+          />
+          <div className="sm:col-span-2">
+            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-400">
+              Hard controls — all required
+            </div>
+            <div className="grid gap-1 sm:grid-cols-2">
+              {EXCEPTIONAL_START_CONTROLS.map((ctrl) => (
+                <label key={ctrl.key} className="flex items-center gap-2 text-xs text-stone-700">
+                  <input
+                    type="checkbox"
+                    name={ctrl.key}
+                    defaultChecked={ex ? Boolean(ex[ctrl.key]) : false}
+                  />
+                  {ctrl.label}
+                </label>
+              ))}
+            </div>
+          </div>
+          <textarea
+            name="supervisionNotes"
+            defaultValue={ex?.supervisionNotes ?? ""}
+            rows={2}
+            placeholder="Supervision notes"
+            className="input sm:col-span-2"
+          />
+          <button className="btn-secondary px-4 py-2 text-sm sm:col-span-2">
+            Save supervised-start plan
+          </button>
+        </form>
+
+        {ex ? (
+          exReadiness && !exReadiness.readyForApproval ? (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                Required before approval ({exReadiness.requirements.length})
+              </div>
+              <ul className="mt-1 space-y-1 text-sm text-amber-800">
+                {exReadiness.requirements.map((r) => (
+                  <li key={r}>• {r}</li>
+                ))}
+              </ul>
+            </div>
+          ) : ex.status === "APPROVED" ? (
+            <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+              Approved by <strong>{ex.approvedBy}</strong> on {fmt(ex.approvedAt)}.
+              Supervised start is in effect — review by {fmt(ex.reviewDate)}.
+            </p>
+          ) : (
+            <form
+              action={approveExceptionalStart}
+              className="mt-4 flex flex-wrap items-end gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3"
+            >
+              <input type="hidden" name="caseId" value={c.id} />
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-stone-500">
+                  RM/RI approval (named)
+                </label>
+                <input
+                  name="approverName"
+                  placeholder="Approver name & role"
+                  className="input"
+                  required
+                />
+              </div>
+              <button className="btn-primary px-4 py-2 text-sm">
+                Approve supervised start
+              </button>
+            </form>
+          )
+        ) : null}
+      </section>
 
       {/* Evidence documents — private Supabase Storage */}
       <section className="card mt-6">
