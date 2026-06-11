@@ -13,9 +13,42 @@ const START_ELIGIBILITY_LABELS: Record<string, string> = {
   CLEARED: "Cleared",
 };
 
-export default async function SaferRecruitmentDashboard() {
+export default async function SaferRecruitmentDashboard({
+  searchParams,
+}: {
+  searchParams?: { rag?: string; q?: string };
+}) {
   const { employer } = await requireEmployer();
   const s = await dashboardStats(employer.id);
+
+  const ragParam = (searchParams?.rag ?? "").toUpperCase();
+  const activeRag = ["RED", "AMBER", "GREEN"].includes(ragParam) ? ragParam : "";
+  const q = (searchParams?.q ?? "").trim();
+
+  const filtered = s.cases.filter((c) => {
+    if (activeRag && c.compliance.rag !== activeRag) return false;
+    if (q && !(c.candidate.fullName ?? "").toLowerCase().includes(q.toLowerCase()))
+      return false;
+    return true;
+  });
+
+  // Build a dashboard URL, preserving the param that isn't being changed.
+  const hrefWith = (next: { rag?: string; q?: string }) => {
+    const params = new URLSearchParams();
+    const r = next.rag !== undefined ? next.rag : activeRag;
+    const query = next.q !== undefined ? next.q : q;
+    if (r) params.set("rag", r);
+    if (query) params.set("q", query);
+    const qs = params.toString();
+    return `/employer/safer-recruitment${qs ? `?${qs}` : ""}`;
+  };
+
+  const ragFilters: { label: string; value: string }[] = [
+    { label: "All", value: "" },
+    { label: "Red", value: "RED" },
+    { label: "Amber", value: "AMBER" },
+    { label: "Green", value: "GREEN" },
+  ];
 
   return (
     <div>
@@ -58,15 +91,52 @@ export default async function SaferRecruitmentDashboard() {
         <StatCard label="Exceptional starts" value={s.exceptional} tone={s.exceptional ? "warn" : "default"} />
       </div>
 
-      <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wide text-stone-500">
-        Cases
-      </h2>
+      <div className="mb-3 mt-8 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">
+          Cases{filtered.length !== s.cases.length ? ` (${filtered.length}/${s.cases.length})` : ""}
+        </h2>
+        {s.cases.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex gap-1">
+              {ragFilters.map((f) => (
+                <Link
+                  key={f.label}
+                  href={hrefWith({ rag: f.value })}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium ${
+                    activeRag === f.value
+                      ? "bg-brand-600 text-white"
+                      : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                  }`}
+                >
+                  {f.label}
+                </Link>
+              ))}
+            </div>
+            <form method="get" className="flex gap-1">
+              {activeRag ? <input type="hidden" name="rag" value={activeRag} /> : null}
+              <input
+                name="q"
+                defaultValue={q}
+                placeholder="Search name…"
+                className="input px-2.5 py-1 text-xs"
+              />
+              <button className="btn-secondary px-2.5 py-1 text-xs">Search</button>
+            </form>
+          </div>
+        ) : null}
+      </div>
 
       {s.cases.length === 0 ? (
         <EmptyState title="No safer-recruitment cases yet">
           Open a case from a match to begin pre-employment checks. Cases only
           start once you and a candidate have matched and their identity is
           unlocked.
+        </EmptyState>
+      ) : filtered.length === 0 ? (
+        <EmptyState title="No cases match the filter">
+          <Link href="/employer/safer-recruitment" className="text-brand-700 hover:underline">
+            Clear filters
+          </Link>
         </EmptyState>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
@@ -83,7 +153,7 @@ export default async function SaferRecruitmentDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-              {s.cases.map((c) => {
+              {filtered.map((c) => {
                 const received = c.references.filter(
                   (r) => r.status === "RECEIVED" || r.status === "VERIFIED"
                 ).length;
