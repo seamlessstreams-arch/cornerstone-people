@@ -5,7 +5,7 @@
   "description": "Keni — a regional, supply-first mutual-matching app for children's-home recruitment (MVP).",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && (prisma migrate deploy || echo '⚠️  prisma migrate deploy failed (DB unreachable at build time) — continuing build; apply migrations out-of-band') && next build",
+    "build": "prisma generate && (export DIRECT_URL=\"${DIRECT_URL:-$DATABASE_URL}\"; prisma migrate deploy || prisma db push --skip-generate || echo '⚠️  prisma migrate deploy failed (DB unreachable at build time) — continuing build; apply migrations out-of-band') && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
