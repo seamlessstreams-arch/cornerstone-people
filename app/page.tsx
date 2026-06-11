@@ -110,8 +110,33 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Why Keni */}
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">
+          Why Keni
+        </p>
+        <h2 className="mt-2 max-w-3xl text-3xl font-bold tracking-tight text-stone-900">
+          Generic job boards list jobs. Keni understands children&apos;s
+          residential care.
+        </h2>
+        <p className="mt-3 max-w-2xl text-stone-600">
+          Indeed and CV-Library hand you a stack of CVs and leave the hard part
+          — safer recruitment, suitability, culture and compliance — entirely to
+          you. Keni is built for this sector and carries that weight with you.
+        </p>
+        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <Feature title="Safer recruitment, built in" body="Schedule 2 checks, reference analysis and a clear suitability picture — not a CV dump you have to vet from scratch." />
+          <Feature title="Children's-homes specific" body="Designed around residential childcare — the roles, the regulations and the realities, not a generic ATS bent to fit." />
+          <Feature title="Values-based matching" body="Therapeutic culture, trauma-informed practice and what matters to a candidate — matched on more than keywords." />
+          <Feature title="Rota & shift reality" body="Shift patterns, sleep-ins and the realities of residential cover are first-class, not an afterthought." />
+          <Feature title="Candidate experience" body="A warm, values-led journey where candidates can see why a role fits — and stay anonymous until interest is mutual." />
+          <Feature title="Compliance governance" body="Every check, every chase and every decision explainable, logged and inspection-ready." />
+        </div>
+      </section>
+
       {/* Safer Recruitment OS */}
-      <section id="safer-recruitment" className="mx-auto max-w-6xl px-6 py-16">
+      <section id="safer-recruitment" className="border-t border-stone-200 bg-white py-16">
+        <div className="mx-auto max-w-6xl px-6">
         <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">
           The Safer Recruitment OS
         </p>
@@ -134,6 +159,7 @@ export default async function HomePage() {
           <Feature title="Exceptional start" body="Risk assessment, supervision plan and named RM/RI approval — with hard controls: no sole charge, no unsupervised work." />
           <Feature title="Single Central Record" body="An Ofsted-ready staff-file index across every candidate — print or export to CSV in a click." />
           <Feature title="Audit trail" body="An append-only record of who did what and when — every decision has a human owner." />
+          </div>
         </div>
       </section>
 
