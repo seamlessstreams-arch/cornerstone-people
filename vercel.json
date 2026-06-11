@@ -1,5 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "prisma generate && (if [ \"$VERCEL_ENV\" = \"production\" ]; then prisma migrate deploy || echo \"WARN: prisma migrate deploy failed (DB unreachable at build time) - continuing build; apply migrations out-of-band\"; else echo \"Skipping prisma migrate deploy on non-production ($VERCEL_ENV) deploy\"; fi) && next build"
+  "buildCommand": "prisma generate && { [ \"$VERCEL_ENV\" = production ] && prisma migrate deploy || true; } && next build"
 }
