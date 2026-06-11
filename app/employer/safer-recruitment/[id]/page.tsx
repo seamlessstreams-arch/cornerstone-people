@@ -38,6 +38,7 @@ import {
   EXCEPTIONAL_START_CONTROLS,
   RISK_LEVELS,
   QUALIFICATION_KINDS,
+  SELF_DECLARATION_OUTCOMES,
   type SrStage,
   type ExceptionalStartStatus,
 } from "@/lib/constants";
@@ -55,6 +56,8 @@ import {
   addQualification,
   setQualificationStatus,
   deleteQualification,
+  sendSelfDeclarationLink,
+  reviewSelfDeclaration,
 } from "@/app/actions/safer-recruitment";
 
 export const dynamic = "force-dynamic";
@@ -101,6 +104,7 @@ export default async function CaseDetail({ params }: { params: { id: string } })
   const clearance = clearanceForCase(c);
   const compliance = caseCompliance(c);
   const ex = c.exceptionalStart;
+  const sd = c.selfDeclaration;
   const exReadiness = ex
     ? assessExceptionalStart({
         businessReason: ex.businessReason,
@@ -616,6 +620,100 @@ export default async function CaseDetail({ params }: { params: { id: string } })
               <button className="btn-primary col-span-2 px-3 py-2 text-sm">Add to staff file</button>
             </form>
           </details>
+        </section>
+
+        {/* Candidate self-declaration */}
+        <section className="card">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold text-stone-900">Self-declaration</h2>
+            {sd ? (
+              <StatusBadge
+                status={
+                  sd.disclosureFlagged && !sd.reviewedAt
+                    ? "CONCERN"
+                    : sd.status === "REVIEWED"
+                    ? "ACCEPTED"
+                    : sd.status
+                }
+                label={sd.status.toLowerCase()}
+              />
+            ) : null}
+          </div>
+          <p className="mt-1 text-xs text-stone-400">
+            Confidential criminal self-disclosure, requested at shortlisting. Any
+            disclosure is flagged for a named manager to review before progressing.
+          </p>
+
+          {/* Issue / re-issue the candidate link */}
+          <form action={sendSelfDeclarationLink} className="mt-3">
+            <input type="hidden" name="caseId" value={c.id} />
+            <button className="btn-secondary px-3 py-1.5 text-xs">
+              {sd ? "Re-issue candidate link" : "Send candidate link"}
+            </button>
+          </form>
+
+          {sd?.publicToken && sd.status === "PENDING" ? (
+            <div className="mt-2 rounded-md border border-brand-100 bg-brand-50 p-2 text-xs">
+              <div className="font-semibold text-brand-700">Candidate link</div>
+              <div className="mt-1 break-all font-mono text-stone-600">
+                {appUrl()}/self-declaration/{sd.publicToken}
+              </div>
+              <div className="mt-1 text-stone-400">Expires {fmt(sd.tokenExpiresAt)}.</div>
+            </div>
+          ) : null}
+
+          {sd && sd.status !== "PENDING" ? (
+            <div className="mt-3 space-y-2 text-sm">
+              {sd.disclosureFlagged ? (
+                <p className="rounded-md bg-rose-50 p-2 text-xs font-medium text-rose-700">
+                  Disclosure made — confidential manager review required.
+                </p>
+              ) : (
+                <p className="rounded-md bg-emerald-50 p-2 text-xs font-medium text-emerald-700">
+                  No disclosures declared.
+                </p>
+              )}
+              <ul className="space-y-1 text-xs text-stone-600">
+                <li>Unspent convictions: {sd.hasUnspentConvictions ? "Yes" : "No"}</li>
+                <li>Cautions / pending: {sd.hasCautionsOrPending ? "Yes" : "No"}</li>
+                <li>Barred: {sd.isBarred ? "Yes" : "No"}</li>
+                <li>Disqualified (incl. by association): {sd.isDisqualified ? "Yes" : "No"}</li>
+                <li>Lived/worked overseas (5y): {sd.livedOverseas ? "Yes" : "No"}</li>
+              </ul>
+              {sd.disclosureDetails ? (
+                <p className="rounded bg-stone-50 p-2 text-xs text-stone-700">
+                  <span className="font-semibold">Details:</span> {sd.disclosureDetails}
+                </p>
+              ) : null}
+              {sd.overseasDetails ? (
+                <p className="text-xs text-stone-500">Overseas: {sd.overseasDetails}</p>
+              ) : null}
+
+              {sd.reviewedAt ? (
+                <p className="text-xs text-stone-500">
+                  Reviewed by {sd.reviewedBy} on {fmt(sd.reviewedAt)} — outcome:{" "}
+                  <strong>{sd.reviewOutcome ?? "—"}</strong>.
+                  {sd.managerNotes ? ` ${sd.managerNotes}` : ""}
+                </p>
+              ) : (
+                <form action={reviewSelfDeclaration} className="mt-1 space-y-2">
+                  <input type="hidden" name="caseId" value={c.id} />
+                  <select name="reviewOutcome" defaultValue="" required className="input text-sm">
+                    <option value="" disabled>
+                      Record manager review outcome…
+                    </option>
+                    {SELF_DECLARATION_OUTCOMES.map((o) => (
+                      <option key={o} value={o}>
+                        {o.replace(/_/g, " ").toLowerCase()}
+                      </option>
+                    ))}
+                  </select>
+                  <textarea name="managerNotes" rows={2} placeholder="Manager notes" className="input text-sm" />
+                  <button className="btn-primary px-3 py-1.5 text-xs">Record review</button>
+                </form>
+              )}
+            </div>
+          ) : null}
         </section>
       </div>
 
