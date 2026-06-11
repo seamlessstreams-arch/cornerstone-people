@@ -41,6 +41,9 @@ export default async function SingleCentralRecord() {
             <Link href="/employer/safer-recruitment" className="btn-secondary">
               ← Dashboard
             </Link>
+            <a href="/employer/safer-recruitment/record/export" className="btn-secondary">
+              Download CSV
+            </a>
             <PrintButton />
           </div>
         }
