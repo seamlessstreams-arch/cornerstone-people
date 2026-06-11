@@ -56,9 +56,14 @@ export default async function SaferRecruitmentDashboard({
         title="Safer recruitment"
         subtitle="Track every matched candidate through pre-employment checks. The system chases, flags and summarises — a named human always makes the decision."
         action={
-          <Link href="/employer/safer-recruitment/record" className="btn-secondary">
-            Single Central Record
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/employer/safer-recruitment/reminders" className="btn-secondary">
+              Reminders
+            </Link>
+            <Link href="/employer/safer-recruitment/record" className="btn-secondary">
+              Single Central Record
+            </Link>
+          </div>
         }
       />
 
