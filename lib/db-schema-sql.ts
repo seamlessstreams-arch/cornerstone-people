@@ -409,6 +409,7 @@ CREATE TABLE "TalentProspect" (
     "employerId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "source" TEXT,
+    "profileUrl" TEXT,
     "note" TEXT,
     "stage" TEXT NOT NULL DEFAULT 'NEW',
     "createdBy" TEXT,

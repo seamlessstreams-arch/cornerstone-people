@@ -25,6 +25,7 @@ export async function addProspect(formData: FormData) {
       employerId: employer.id,
       name,
       source: str(formData, "source"),
+      profileUrl: str(formData, "profileUrl"),
       note: str(formData, "note"),
       createdBy: user.email,
     },
