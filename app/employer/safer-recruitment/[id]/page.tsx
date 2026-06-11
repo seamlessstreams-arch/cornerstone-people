@@ -16,6 +16,7 @@ import {
   caseAuditTrail,
 } from "@/lib/safer-recruitment-data";
 import { assessExceptionalStart } from "@/lib/safer-recruitment";
+import { appUrl } from "@/lib/email";
 import {
   PageHeader,
   StatusBadge,
@@ -274,6 +275,27 @@ export default async function CaseDetail({ params }: { params: { id: string } })
                     {fmt(r.chaser2At)} / {fmt(r.finalChaserAt)} • received{" "}
                     {fmt(r.receivedAt)}
                   </div>
+
+                  {r.publicToken && r.status !== "RECEIVED" && r.status !== "VERIFIED" ? (
+                    <div className="mt-2 rounded-md border border-brand-100 bg-brand-50 p-2 text-xs">
+                      <div className="font-semibold text-brand-700">
+                        Mobile reference link
+                      </div>
+                      <div className="mt-1 break-all font-mono text-stone-600">
+                        {appUrl()}/reference/{r.publicToken}
+                      </div>
+                      <div className="mt-1 text-stone-400">
+                        Send this to the referee to complete on their phone. Expires{" "}
+                        {fmt(r.tokenExpiresAt)}.
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {r.submittedIp ? (
+                    <div className="mt-1 text-xs text-stone-400">
+                      Submitted via mobile link from {r.submittedIp}.
+                    </div>
+                  ) : null}
 
                   {r.qualityStatus ? (
                     <div className="mt-2 rounded-md bg-stone-50 p-2 text-xs">

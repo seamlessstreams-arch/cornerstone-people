@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -168,6 +169,10 @@ export async function markReferenceSent(formData: FormData) {
       chaser1At: req.chaser1At ?? plus(7),
       chaser2At: req.chaser2At ?? plus(14),
       finalChaserAt: req.finalChaserAt ?? plus(21),
+      // Mint a one-time public link the referee can complete on their phone.
+      // Refresh the expiry on every send so re-sending revives an expired link.
+      publicToken: req.publicToken ?? randomBytes(24).toString("hex"),
+      tokenExpiresAt: plus(7),
     },
   });
   // Sending a request often means the case is now waiting on references.
