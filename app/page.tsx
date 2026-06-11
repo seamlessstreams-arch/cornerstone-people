@@ -17,6 +17,9 @@ export default async function HomePage() {
             Keni
           </span>
           <nav className="flex items-center gap-2">
+            <a href="#matching" className="hidden px-3 py-1.5 text-sm font-medium text-stone-600 hover:text-stone-900 sm:block">
+              Matching
+            </a>
             <a href="#safer-recruitment" className="hidden px-3 py-1.5 text-sm font-medium text-stone-600 hover:text-stone-900 sm:block">
               Safer recruitment
             </a>
@@ -106,6 +109,39 @@ export default async function HomePage() {
               <Bullet>Block your current employer — silently and undetectably</Bullet>
               <Bullet>Verify your references once, then arrive ready</Bullet>
             </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* Matching */}
+      <section id="matching" className="border-y border-stone-200 bg-white">
+        <div className="mx-auto max-w-6xl px-6 py-16">
+          <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">
+            Mutual matching
+          </p>
+          <h2 className="mt-2 max-w-3xl text-3xl font-bold tracking-tight text-stone-900">
+            Staff and homes, matched on mutual interest.
+          </h2>
+          <p className="mt-3 max-w-2xl text-stone-600">
+            Candidates and children&apos;s homes both build a profile. Either side
+            can express interest — but names, full profiles and a conversation
+            unlock <strong>only when both sides are interested</strong>. No spam
+            applications, and no candidate put on the open market against their
+            will.
+          </p>
+          <ol className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <Step n={1} title="Build a profile" body="Candidates show experience, shift availability and what matters to them; homes show their ethos, placement picture and culture." />
+            <Step n={2} title="Express interest" body="Browse and signal interest either way. Candidates stay anonymous, and can block their current employer — silently." />
+            <Step n={3} title="Match unlocks" body="When interest is mutual, full profiles and a message thread open, with a single next step: request to interview." />
+            <Step n={4} title="Arrive check-ready" body="A matched candidate comes with verified references already in hand — and flows straight into safer-recruitment checks." />
+          </ol>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link href="/signup?role=CANDIDATE" className="btn-secondary px-5 py-2.5 text-sm">
+              Create a candidate profile
+            </Link>
+            <Link href="/signup?role=EMPLOYER" className="btn-primary px-5 py-2.5 text-sm">
+              List your home
+            </Link>
           </div>
         </div>
       </section>
