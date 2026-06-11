@@ -22,7 +22,14 @@ const BAND_CLASS: Record<string, string> = {
 export default async function TalentPipelinePage({
   searchParams,
 }: {
-  searchParams?: { role?: string; region?: string; kw?: string };
+  searchParams?: {
+    role?: string;
+    region?: string;
+    kw?: string;
+    minExp?: string;
+    maxExp?: string;
+    edu?: string;
+  };
 }) {
   const { employer } = await requireEmployer();
   const prospects = await prisma.talentProspect.findMany({
@@ -33,15 +40,31 @@ export default async function TalentPipelinePage({
   const role = (searchParams?.role ?? "").trim();
   const region = (searchParams?.region ?? "").trim();
   const kw = (searchParams?.kw ?? "").trim();
-  const matching = Boolean(role || region || kw);
+  const minExp = (searchParams?.minExp ?? "").trim();
+  const maxExp = (searchParams?.maxExp ?? "").trim();
+  const edu = (searchParams?.edu ?? "").trim();
+  const matching = Boolean(role || region || kw || minExp || maxExp || edu);
   const keywords = kw ? kw.split(",").map((k) => k.trim()).filter(Boolean) : [];
+  const education = edu ? edu.split(",").map((e) => e.trim()).filter(Boolean) : [];
+  const minExperience = minExp && !Number.isNaN(Number(minExp)) ? Number(minExp) : null;
+  const maxExperience = maxExp && !Number.isNaN(Number(maxExp)) ? Number(maxExp) : null;
 
   // Score + rank when criteria are present.
   let rows = prospects.map((p) => ({ p, match: null as MatchResult | null }));
   if (matching) {
     rows = prospects
-      .map((p) => ({ p, match: scoreCandidate(p, { roleSought: role, region, keywords }) }))
-      .sort((a, b) => (b.match!.score - a.match!.score));
+      .map((p) => ({
+        p,
+        match: scoreCandidate(p, {
+          roleSought: role,
+          region,
+          keywords,
+          minExperience,
+          maxExperience,
+          education,
+        }),
+      }))
+      .sort((a, b) => b.match!.score - a.match!.score);
   }
 
   return (
@@ -67,7 +90,10 @@ export default async function TalentPipelinePage({
         <div className="mt-2 grid gap-2 sm:grid-cols-4">
           <input name="role" defaultValue={role} placeholder="Role (e.g. Support Worker)" className="input" />
           <input name="region" defaultValue={region} placeholder="Region" className="input" />
-          <input name="kw" defaultValue={kw} placeholder="Must-have keywords, comma-separated" className="input sm:col-span-2" />
+          <input name="kw" defaultValue={kw} placeholder="Must-have skills, comma-separated" className="input sm:col-span-2" />
+          <input name="minExp" type="number" min="0" defaultValue={minExp} placeholder="Min years" className="input" />
+          <input name="maxExp" type="number" min="0" defaultValue={maxExp} placeholder="Max years" className="input" />
+          <input name="edu" defaultValue={edu} placeholder="Education / quals, comma-separated" className="input sm:col-span-2" />
         </div>
         <div className="mt-2 flex gap-2">
           <button className="btn-primary px-4 py-1.5 text-sm">Rank candidates</button>
@@ -107,6 +133,11 @@ export default async function TalentPipelinePage({
                           >
                             {match!.score} · {match!.band.toLowerCase()}
                           </span>
+                          <div className="mt-1 text-[10px] text-stone-400">
+                            {match!.breakdown
+                              .map((b) => `${b.dimension.slice(0, 4)} ${b.score}`)
+                              .join(" · ")}
+                          </div>
                           {match!.reasons.length ? (
                             <div className="mt-1 text-[11px] text-emerald-700">{match!.reasons.join("; ")}</div>
                           ) : null}

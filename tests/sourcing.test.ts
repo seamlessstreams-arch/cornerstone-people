@@ -61,3 +61,26 @@ test("parseSourcedList: supports pipe-delimited and ignores blank lines", () => 
   assert.equal(rows[0].name, "Pat Lee");
   assert.equal(rows[0].roleSought, "RSW");
 });
+
+test("scoreCandidate: experience window rewards a fit and penalises a shortfall", () => {
+  const crit = { roleSought: "Support Worker", minExperience: 3, maxExperience: 8 };
+  const fits = scoreCandidate({ roleSought: "Support Worker", experienceLevel: "5 years" }, crit);
+  const short = scoreCandidate({ roleSought: "Support Worker", experienceLevel: "1 year" }, crit);
+  assert.ok(fits.reasons.some((r) => /experience fits/i.test(r)));
+  assert.ok(short.gaps.some((g) => /under the 3y minimum/i.test(g)));
+  assert.ok(fits.score > short.score);
+});
+
+test("scoreCandidate: education requirement is matched against the candidate text", () => {
+  const crit = { education: ["Level 3", "NVQ"] };
+  const has = scoreCandidate({ summary: "Holds a Level 3 Diploma in residential childcare" }, crit);
+  const lacks = scoreCandidate({ summary: "No formal qualifications listed" }, crit);
+  assert.ok(has.reasons.some((r) => /education/i.test(r)));
+  assert.ok(has.score >= lacks.score);
+});
+
+test("scoreCandidate: breakdown covers all five weighted dimensions", () => {
+  const r = scoreCandidate({ roleSought: "x" }, { roleSought: "y", keywords: [] });
+  const dims = r.breakdown.map((b) => b.dimension).sort();
+  assert.deepEqual(dims, ["education", "experience", "location", "role", "skills"]);
+});

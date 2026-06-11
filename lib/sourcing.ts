@@ -8,8 +8,14 @@
 export type SourcingCriteria = {
   roleSought?: string | null;
   region?: string | null;
-  /** Must-have keywords/skills, lower-cased on input by the caller or here. */
+  /** Must-have skills/keywords — exact match scores full, partial scores half. */
   keywords?: string[];
+  minExperience?: number | null;
+  maxExperience?: number | null;
+  /** Education / qualification keywords to look for. */
+  education?: string[];
+  /** Optional per-dimension weight overrides. */
+  weights?: Partial<DimensionWeights>;
 };
 
 export type SourcedAttributes = {
@@ -20,86 +26,180 @@ export type SourcedAttributes = {
   experienceLevel?: string | null;
 };
 
+export type DimensionWeights = {
+  role: number;
+  location: number;
+  skills: number;
+  experience: number;
+  education: number;
+};
+
+export const DEFAULT_WEIGHTS: DimensionWeights = {
+  role: 0.25,
+  location: 0.2,
+  skills: 0.25,
+  experience: 0.2,
+  education: 0.1,
+};
+
 export type MatchBand = "STRONG" | "POSSIBLE" | "WEAK";
+
+export type DimensionScore = {
+  dimension: keyof DimensionWeights;
+  score: number;
+  weight: number;
+};
 
 export type MatchResult = {
   score: number; // 0–100
   band: MatchBand;
   reasons: string[];
   gaps: string[];
+  breakdown: DimensionScore[];
 };
 
 function norm(s: string | null | undefined): string {
   return (s ?? "").trim().toLowerCase();
 }
 
-// Weightings — role and location dominate; keyword coverage fills the rest.
-const W_ROLE = 40;
-const W_REGION = 25;
-const W_KEYWORDS = 35;
+// First integer found in free text like "3 years" / "5+ yrs".
+export function parseYears(s: string | null | undefined): number | null {
+  const m = /(\d+)/.exec(s ?? "");
+  return m ? Number(m[1]) : null;
+}
 
+type Dim = { score: number; reason?: string; gap?: string };
+
+function roleDim(c: SourcedAttributes, criteria: SourcingCriteria, haystack: string): Dim {
+  const want = norm(criteria.roleSought);
+  if (!want) return { score: 100 };
+  const candRole = norm(c.roleSought);
+  if (candRole && (candRole.includes(want) || want.includes(candRole)))
+    return { score: 100, reason: `Role matches "${criteria.roleSought}"` };
+  if (haystack.includes(want))
+    return { score: 60, reason: `Mentions "${criteria.roleSought}"` };
+  return { score: 0, gap: `No clear match for role "${criteria.roleSought}"` };
+}
+
+function locationDim(c: SourcedAttributes, criteria: SourcingCriteria): Dim {
+  const want = norm(criteria.region);
+  if (!want) return { score: 100 };
+  const cand = norm(c.region);
+  if (cand && (cand.includes(want) || want.includes(cand)))
+    return { score: 100, reason: `In ${criteria.region}` };
+  const wantParts = want.split(/[,\s]+/).filter(Boolean);
+  const candParts = cand.split(/[,\s]+/).filter(Boolean);
+  const common = wantParts.filter((p) => candParts.some((cp) => cp.includes(p)));
+  if (common.length)
+    return {
+      score: Math.round((common.length / wantParts.length) * 80),
+      reason: `Partly in ${criteria.region}`,
+    };
+  return { score: 20, gap: `Not in ${criteria.region}` };
+}
+
+function skillsDim(c: SourcedAttributes, criteria: SourcingCriteria, haystack: string): Dim {
+  const req = (criteria.keywords ?? []).map(norm).filter(Boolean);
+  if (!req.length) return { score: 100 };
+  const candSkills = norm(c.skills)
+    .split(/[;,]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  let pts = 0;
+  const has: string[] = [];
+  const missing: string[] = [];
+  for (const k of req) {
+    if (candSkills.includes(k)) {
+      pts += 1; // exact
+      has.push(k);
+    } else if (haystack.includes(k) || candSkills.some((s) => s.includes(k) || k.includes(s))) {
+      pts += 0.5; // partial
+      has.push(k);
+    } else {
+      missing.push(k);
+    }
+  }
+  return {
+    score: Math.round((100 * pts) / req.length),
+    reason: has.length ? `Has: ${has.join(", ")}` : undefined,
+    gap: missing.length ? `Missing: ${missing.join(", ")}` : undefined,
+  };
+}
+
+function experienceDim(c: SourcedAttributes, criteria: SourcingCriteria): Dim {
+  const hasMin = typeof criteria.minExperience === "number";
+  const hasMax = typeof criteria.maxExperience === "number";
+  if (!hasMin && !hasMax) return { score: 100 };
+  const years = parseYears(c.experienceLevel);
+  if (years === null) return { score: 50, gap: "Experience not stated" };
+  const lo = hasMin ? (criteria.minExperience as number) : 0;
+  const hi = hasMax ? (criteria.maxExperience as number) : 99;
+  if (years >= lo && years <= hi)
+    return { score: 100, reason: `${years}y experience fits the brief` };
+  if (years < lo)
+    return {
+      score: Math.max(0, 100 - (lo - years) * 15),
+      gap: `${years}y — under the ${lo}y minimum`,
+    };
+  return {
+    score: Math.max(70, 100 - (years - hi) * 5),
+    reason: `${years}y (above the ${hi}y target)`,
+  };
+}
+
+function educationDim(criteria: SourcingCriteria, haystack: string): Dim {
+  const edu = (criteria.education ?? []).map(norm).filter(Boolean);
+  if (!edu.length) return { score: 100 };
+  const matches = edu.filter((e) => haystack.includes(e));
+  if (!matches.length) return { score: 50, gap: "No education/qualification match" };
+  return {
+    score: Math.round((100 * matches.length) / edu.length),
+    reason: `Education: ${matches.join(", ")}`,
+  };
+}
+
+// Advisory, weighted, rule-based scorer. Ranks and explains — never accepts or
+// rejects. Each dimension scores 0–100; the overall is a weighted average, and
+// a dimension with no criteria scores full marks (it doesn't drag the result).
 export function scoreCandidate(
   c: SourcedAttributes,
   criteria: SourcingCriteria,
 ): MatchResult {
-  const reasons: string[] = [];
-  const gaps: string[] = [];
-  let score = 0;
-
-  // The text we scan for keyword/role hits.
+  const weights = { ...DEFAULT_WEIGHTS, ...(criteria.weights ?? {}) };
   const haystack = [c.roleSought, c.skills, c.summary, c.experienceLevel]
     .map(norm)
     .join(" • ");
 
-  // Role
-  const wantRole = norm(criteria.roleSought);
-  if (wantRole) {
-    const candRole = norm(c.roleSought);
-    if (candRole && (candRole.includes(wantRole) || wantRole.includes(candRole))) {
-      score += W_ROLE;
-      reasons.push(`Role matches "${criteria.roleSought}"`);
-    } else if (haystack.includes(wantRole)) {
-      score += Math.round(W_ROLE * 0.6);
-      reasons.push(`Mentions "${criteria.roleSought}"`);
-    } else {
-      gaps.push(`No clear match for role "${criteria.roleSought}"`);
-    }
-  } else {
-    // No role filter → don't penalise; treat role weight as neutral credit.
-    score += Math.round(W_ROLE * 0.5);
+  const dims: Record<keyof DimensionWeights, Dim> = {
+    role: roleDim(c, criteria, haystack),
+    location: locationDim(c, criteria),
+    skills: skillsDim(c, criteria, haystack),
+    experience: experienceDim(c, criteria),
+    education: educationDim(criteria, haystack),
+  };
+
+  const reasons: string[] = [];
+  const gaps: string[] = [];
+  const breakdown: DimensionScore[] = [];
+  let weighted = 0;
+  let totalWeight = 0;
+  for (const key of Object.keys(weights) as (keyof DimensionWeights)[]) {
+    const d = dims[key];
+    const w = weights[key];
+    breakdown.push({ dimension: key, score: d.score, weight: w });
+    weighted += d.score * w;
+    totalWeight += w;
+    if (d.reason) reasons.push(d.reason);
+    if (d.gap) gaps.push(d.gap);
   }
 
-  // Region
-  const wantRegion = norm(criteria.region);
-  if (wantRegion) {
-    if (norm(c.region).includes(wantRegion) || wantRegion.includes(norm(c.region)) && norm(c.region) !== "") {
-      score += W_REGION;
-      reasons.push(`In ${criteria.region}`);
-    } else {
-      gaps.push(`Not in ${criteria.region}`);
-    }
-  } else {
-    score += Math.round(W_REGION * 0.5);
-  }
-
-  // Keywords
-  const keywords = (criteria.keywords ?? [])
-    .map((k) => norm(k))
-    .filter((k) => k.length > 0);
-  if (keywords.length) {
-    const hits = keywords.filter((k) => haystack.includes(k));
-    const missed = keywords.filter((k) => !haystack.includes(k));
-    score += Math.round((W_KEYWORDS * hits.length) / keywords.length);
-    if (hits.length) reasons.push(`Has: ${hits.join(", ")}`);
-    if (missed.length) gaps.push(`Missing: ${missed.join(", ")}`);
-  } else {
-    score += Math.round(W_KEYWORDS * 0.5);
-  }
-
-  score = Math.max(0, Math.min(100, score));
+  const score = Math.max(
+    0,
+    Math.min(100, Math.round(totalWeight ? weighted / totalWeight : 0)),
+  );
   const band: MatchBand = score >= 70 ? "STRONG" : score >= 40 ? "POSSIBLE" : "WEAK";
 
-  return { score, band, reasons, gaps };
+  return { score, band, reasons, gaps, breakdown };
 }
 
 // Parse the pasted bulk list. One candidate per line, fields in this order:
