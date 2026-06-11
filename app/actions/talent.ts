@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireEmployer } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { parseSourcedList } from "@/lib/sourcing";
+import {
+  parseSourcedList,
+  parseCvLibraryListing,
+  looksLikeCvLibrary,
+} from "@/lib/sourcing";
 
 const STAGES = ["NEW", "REVIEWING", "INVITED", "ARCHIVED"] as const;
 
@@ -19,7 +23,10 @@ export async function importSourcedCandidates(formData: FormData) {
   const text = String(formData.get("csv") ?? "");
   const source = String(formData.get("source") ?? "").trim() || "CV-Library";
 
-  const rows = parseSourcedList(text).slice(0, MAX_IMPORT);
+  // Accept either a CSV or a pasted/forwarded CV-Library alert email.
+  const rows = (
+    looksLikeCvLibrary(text) ? parseCvLibraryListing(text) : parseSourcedList(text)
+  ).slice(0, MAX_IMPORT);
   if (rows.length === 0) {
     revalidatePath("/employer/talent-pipeline");
     return;

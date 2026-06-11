@@ -198,13 +198,15 @@ export default async function TalentPipelinePage({
         <div className="space-y-6">
           {/* Bulk import */}
           <div className="card">
-            <h2 className="font-semibold text-stone-900">Import list (CSV)</h2>
+            <h2 className="font-semibold text-stone-900">Import candidates</h2>
             <p className="mt-1 text-xs text-stone-400">
-              Paste rows from your licensed export. One per line:
+              Paste a <strong>CV-Library alert email</strong> (Kenny reads the
+              names, role, location and skills automatically) — or a CSV from your
+              licensed export, one per line:
               <br />
               <code className="text-[11px]">Name, Profile URL, Region, Role, Experience, Skills, Summary</code>
               <br />
-              Only name is required. Do not paste contact details.
+              Only name is required. Contact details are stripped on import.
             </p>
             <form action={importSourcedCandidates} className="mt-3 space-y-2">
               <input name="source" defaultValue="CV-Library" placeholder="Source" className="input text-sm" />

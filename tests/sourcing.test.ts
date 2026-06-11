@@ -84,3 +84,54 @@ test("scoreCandidate: breakdown covers all five weighted dimensions", () => {
   const dims = r.breakdown.map((b) => b.dimension).sort();
   assert.deepEqual(dims, ["education", "experience", "location", "role", "skills"]);
 });
+
+import { parseCvLibraryListing, looksLikeCvLibrary } from "../lib/sourcing";
+
+const CVL_SAMPLE = `View CV
+Angel Thomas
+
+
+99% Match
+Profile/CV Last Updated: 22/04/2026 12:43
+Add Note | Select
+Location
+Coventry, West Midlands
+Willing to Travel
+10 miles
+Job Title
+Health Care Assistant
+Desired Role
+N/A
+Skills: Mental Health Patient Assessments Safeguarding Nursing
+CV Keywords: 12 High St, contact me on 07700900123 or angel@example.com PROFESSIONAL SUMMARY Compassionate nurse with one year of experience.
+View CV
+Mariyah Begum
+
+
+88% Match
+Location
+Sandwell, West Midlands
+Job Title
+Support Worker
+Skills: Safeguarding Active Listening Empathy
+CV Keywords: Residential Care Home experience`;
+
+test("looksLikeCvLibrary: recognises a CV-Library alert", () => {
+  assert.ok(looksLikeCvLibrary(CVL_SAMPLE));
+  assert.ok(!looksLikeCvLibrary("Jane Doe, https://x, Kent, Nurse"));
+});
+
+test("parseCvLibraryListing: extracts name/region/role/skills, strips contact details", () => {
+  const rows = parseCvLibraryListing(CVL_SAMPLE);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].name, "Angel Thomas");
+  assert.equal(rows[0].region, "West Midlands");
+  assert.equal(rows[0].roleSought, "Health Care Assistant");
+  assert.ok(/safeguarding/i.test(rows[0].skills ?? ""));
+  // contact details must never survive
+  assert.ok(!/@example\.com/.test(JSON.stringify(rows[0])));
+  assert.ok(!/07700900123/.test(JSON.stringify(rows[0])));
+  // summary picks up after PROFESSIONAL SUMMARY
+  assert.ok(/compassionate nurse/i.test(rows[0].summary ?? ""));
+  assert.equal(rows[1].name, "Mariyah Begum");
+});
