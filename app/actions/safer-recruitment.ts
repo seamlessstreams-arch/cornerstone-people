@@ -571,6 +571,61 @@ export async function reviewSelfDeclaration(formData: FormData) {
   revalidatePath(`/employer/safer-recruitment/${c.id}`);
 }
 
+// --- Health / fitness declaration ---------------------------------------
+
+export async function sendHealthDeclarationLink(formData: FormData) {
+  const { employer, user } = await requireEmployer();
+  const caseId = String(formData.get("caseId") ?? "");
+  const c = await ownCase(employer.id, caseId);
+
+  const existing = await prisma.healthDeclaration.findUnique({
+    where: { caseId: c.id },
+  });
+  const token = existing?.publicToken ?? randomBytes(24).toString("hex");
+  const tokenExpiresAt = new Date(Date.now() + 7 * 86400000);
+
+  await prisma.healthDeclaration.upsert({
+    where: { caseId: c.id },
+    create: { caseId: c.id, status: "PENDING", publicToken: token, tokenExpiresAt },
+    update: { publicToken: token, tokenExpiresAt },
+  });
+  await logAudit({
+    actor: user,
+    action: "HEALTH_DECLARATION_LINK_SENT",
+    entityType: "SaferRecruitmentCase",
+    entityId: c.id,
+    summary: "Health declaration link issued to candidate",
+  });
+  revalidatePath(`/employer/safer-recruitment/${c.id}`);
+}
+
+export async function reviewHealthDeclaration(formData: FormData) {
+  const { employer, user } = await requireEmployer();
+  const caseId = String(formData.get("caseId") ?? "");
+  const c = await ownCase(employer.id, caseId);
+  const hd = await prisma.healthDeclaration.findUnique({ where: { caseId: c.id } });
+  if (!hd) return;
+
+  await prisma.healthDeclaration.update({
+    where: { caseId: c.id },
+    data: {
+      status: "REVIEWED",
+      reviewedBy: user.email,
+      reviewedAt: new Date(),
+      fitnessOutcome: str(formData, "fitnessOutcome"),
+      managerNotes: str(formData, "managerNotes"),
+    },
+  });
+  await logAudit({
+    actor: user,
+    action: "HEALTH_DECLARATION_REVIEWED",
+    entityType: "SaferRecruitmentCase",
+    entityId: c.id,
+    summary: `Health declaration reviewed (${str(formData, "fitnessOutcome") ?? "—"})`,
+  });
+  revalidatePath(`/employer/safer-recruitment/${c.id}`);
+}
+
 // --- Reference bank ------------------------------------------------------
 
 export async function saveReferenceBankEntry(formData: FormData) {

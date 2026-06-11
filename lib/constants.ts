@@ -296,6 +296,23 @@ export const SELF_DECLARATION_OUTCOMES = [
   "ESCALATED",
 ] as const;
 
+// Health / fitness declaration — requested after a conditional offer. Asks only
+// role-related fitness questions; sensitive health information is shown only to
+// the manager on their own case, and a named manager confirms fitness for role.
+export const HEALTH_DECLARATION_STATUS = [
+  "PENDING",
+  "SUBMITTED",
+  "REVIEWED",
+] as const;
+export type HealthDeclarationStatus = (typeof HEALTH_DECLARATION_STATUS)[number];
+
+export const HEALTH_FITNESS_OUTCOMES = [
+  "FIT",
+  "FIT_WITH_ADJUSTMENTS",
+  "OCCUPATIONAL_HEALTH_REFERRAL",
+  "NOT_FIT",
+] as const;
+
 // The hard supervision controls that must all be in place before an
 // exceptional supervised start can be approved.
 export const EXCEPTIONAL_START_CONTROLS = [
