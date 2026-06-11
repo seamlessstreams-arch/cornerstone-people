@@ -49,8 +49,14 @@ export async function sendEmail(args: {
 }
 
 export function appUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
-    "http://localhost:3000"
-  );
+  // 1. Explicit override always wins.
+  const explicit = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+  if (explicit) return explicit;
+  // 2. On Vercel, default to the project's production domain so emailed links
+  //    (e.g. password resets) always point at the live site — currently
+  //    talk2keni.vercel.app — even when NEXT_PUBLIC_APP_URL isn't set.
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL?.replace(/\/$/, "");
+  if (vercel) return `https://${vercel}`;
+  // 3. Local development fallback.
+  return "http://localhost:3000";
 }
