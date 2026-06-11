@@ -30,3 +30,24 @@ export async function requireEmployer() {
   if (!employer) redirect("/login");
   return { user, employer };
 }
+
+// --- Admin gating --------------------------------------------------------
+//
+// Some capabilities (external sourcing / CV-Library import) are admin-only:
+// not advertised on the site and not available to ordinary users. Admins are
+// an env allowlist (ADMIN_EMAILS, comma-separated). With none set, nobody is an
+// admin and the feature is hidden entirely.
+export function isAdminEmail(email: string | null | undefined): boolean {
+  const list = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return !!email && list.includes(email.toLowerCase());
+}
+
+/** Require a logged-in employer who is also on the admin allowlist. */
+export async function requireAdminEmployer() {
+  const ctx = await requireEmployer();
+  if (!isAdminEmail(ctx.user.email)) redirect("/employer");
+  return ctx;
+}

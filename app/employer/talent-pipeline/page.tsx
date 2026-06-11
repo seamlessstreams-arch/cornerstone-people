@@ -1,4 +1,4 @@
-import { requireEmployer } from "@/lib/auth";
+import { requireAdminEmployer } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader, EmptyState } from "@/components/ui";
 import {
@@ -31,7 +31,7 @@ export default async function TalentPipelinePage({
     edu?: string;
   };
 }) {
-  const { employer } = await requireEmployer();
+  const { employer } = await requireAdminEmployer();
   const prospects = await prisma.talentProspect.findMany({
     where: { employerId: employer.id },
     orderBy: [{ stage: "asc" }, { createdAt: "desc" }],

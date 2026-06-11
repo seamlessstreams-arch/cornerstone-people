@@ -20,11 +20,11 @@ export default async function HomePage() {
             <a href="#safer-recruitment" className="hidden px-3 py-1.5 text-sm font-medium text-stone-600 hover:text-stone-900 sm:block">
               Safer recruitment
             </a>
-            <a href="#sourcing" className="hidden px-3 py-1.5 text-sm font-medium text-stone-600 hover:text-stone-900 sm:block">
-              Sourcing
-            </a>
             <a href="#how" className="hidden px-3 py-1.5 text-sm font-medium text-stone-600 hover:text-stone-900 sm:block">
               How it works
+            </a>
+            <a href="#pricing" className="hidden px-3 py-1.5 text-sm font-medium text-stone-600 hover:text-stone-900 sm:block">
+              Pricing
             </a>
             {homeHref ? (
               <Link href={homeHref} className="btn-primary">
@@ -89,7 +89,7 @@ export default async function HomePage() {
               start, who is pending, and what to do next.
             </p>
             <ul className="mt-4 space-y-1.5 text-sm text-stone-700">
-              <Bullet>Source &amp; auto-shortlist candidates against your criteria</Bullet>
+              <Bullet>Match with candidates who arrive check-ready</Bullet>
               <Bullet>Chase references, analyse them, flag concerns</Bullet>
               <Bullet>Single Central Record &amp; audit trail, export-ready for Ofsted</Bullet>
             </ul>
@@ -137,29 +137,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Sourcing */}
-      <section id="sourcing" className="border-y border-stone-200 bg-white">
-        <div className="mx-auto max-w-6xl px-6 py-16">
-          <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">
-            Sourcing &amp; shortlisting
-          </p>
-          <h2 className="mt-2 max-w-2xl text-3xl font-bold tracking-tight text-stone-900">
-            Shortlist hundreds of CVs in minutes.
-          </h2>
-          <p className="mt-3 max-w-2xl text-stone-600">
-            Import a candidate list from your own licensed search — paste a
-            CV-Library alert email or a CSV export — and Keni ranks everyone
-            against your role, region, skills and experience, with the reasons
-            spelled out. You only open the profiles worth your time.
-          </p>
-          <div className="mt-8 grid gap-5 sm:grid-cols-3">
-            <Feature title="Import, don't scrape" body="Paste or forward your licensed CV-Library lists and emails. Keni never scrapes third-party sites." />
-            <Feature title="Auto-shortlist" body="A weighted score (skills, experience, location, role, education) ranks candidates and explains every match." />
-            <Feature title="Data-minimised" body="Names and a profile link only — no contact details stored. You open the full profile under your own account." />
-          </div>
-        </div>
-      </section>
-
       {/* How it works */}
       <section id="how" className="mx-auto max-w-6xl px-6 py-16">
         <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">
@@ -192,6 +169,50 @@ export default async function HomePage() {
             <Pillar title="UK GDPR" body="Data minimisation, role-based access, manager-only access to sensitive disclosures." />
             <Pillar title="Full audit" body="An append-only log of every access and change — nothing is hidden or quietly altered." />
             <Pillar title="Regulation-led" body="Built around Children's Homes Regulations 32 & 33, Schedule 2 and Ofsted guidance." />
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="mx-auto max-w-6xl px-6 py-16">
+        <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">
+          Pricing
+        </p>
+        <h2 className="mt-2 max-w-2xl text-3xl font-bold tracking-tight text-stone-900">
+          Candidates never pay. Homes pay only for what they use.
+        </h2>
+        <div className="mt-8 grid gap-6 md:grid-cols-2">
+          <div className="card">
+            <h3 className="text-lg font-semibold text-stone-900">Candidates</h3>
+            <p className="mt-1 text-3xl font-bold text-brand-700">Free</p>
+            <p className="mt-2 text-sm text-stone-600">
+              Always free — create a profile, match with homes and verify your
+              references at no cost, ever.
+            </p>
+            <ul className="mt-4 space-y-1.5 text-sm text-stone-700">
+              <Bullet>Anonymous, blockable profile</Bullet>
+              <Bullet>Mutual-match messaging</Bullet>
+              <Bullet>Reference verification</Bullet>
+            </ul>
+          </div>
+          <div className="card ring-2 ring-brand-200">
+            <h3 className="text-lg font-semibold text-stone-900">Children&apos;s homes</h3>
+            <p className="mt-1 text-3xl font-bold text-brand-700">
+              Get a quote
+            </p>
+            <p className="mt-2 text-sm text-stone-600">
+              Simple per-home pricing for the full Safer Recruitment OS — no
+              setup fees and no long contracts. Talk to us and we&apos;ll size it
+              to your service.
+            </p>
+            <ul className="mt-4 space-y-1.5 text-sm text-stone-700">
+              <Bullet>Unlimited candidates &amp; cases</Bullet>
+              <Bullet>References chasing, DBS, identity, gaps &amp; quals</Bullet>
+              <Bullet>Single Central Record &amp; audit trail for Ofsted</Bullet>
+            </ul>
+            <Link href="/signup?role=EMPLOYER" className="btn-primary mt-5 inline-block px-4 py-2 text-sm">
+              Get started
+            </Link>
           </div>
         </div>
       </section>

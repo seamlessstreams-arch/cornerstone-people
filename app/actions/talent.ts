@@ -1,9 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireEmployer } from "@/lib/auth";
+import { requireEmployer, isAdminEmail } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+
+// Sourcing is admin-only. Returns the employer context or sends a non-admin away.
+async function requireSourcingAdmin() {
+  const ctx = await requireEmployer();
+  if (!isAdminEmail(ctx.user.email)) redirect("/employer");
+  return ctx;
+}
 import {
   parseSourcedList,
   parseCvLibraryListing,
@@ -19,7 +27,7 @@ const MAX_IMPORT = 2000;
 // employer's own CV-Library account). Stores structured attributes for
 // auto-shortlisting — and, by design, NEVER any contact details.
 export async function importSourcedCandidates(formData: FormData) {
-  const { employer, user } = await requireEmployer();
+  const { employer, user } = await requireSourcingAdmin();
   const text = String(formData.get("csv") ?? "");
   const source = String(formData.get("source") ?? "").trim() || "CV-Library";
 
@@ -65,7 +73,7 @@ function str(formData: FormData, key: string): string | null {
 // fields — this records a person an employer is already lawfully sourcing, to
 // track until they're invited to create a consented profile.
 export async function addProspect(formData: FormData) {
-  const { employer, user } = await requireEmployer();
+  const { employer, user } = await requireSourcingAdmin();
   const name = str(formData, "name");
   if (!name) return;
 
@@ -90,7 +98,7 @@ export async function addProspect(formData: FormData) {
 }
 
 export async function setProspectStage(formData: FormData) {
-  const { employer } = await requireEmployer();
+  const { employer } = await requireSourcingAdmin();
   const id = String(formData.get("prospectId") ?? "");
   const stage = String(formData.get("stage") ?? "");
   if (!STAGES.includes(stage as (typeof STAGES)[number])) return;
@@ -103,7 +111,7 @@ export async function setProspectStage(formData: FormData) {
 }
 
 export async function deleteProspect(formData: FormData) {
-  const { employer, user } = await requireEmployer();
+  const { employer, user } = await requireSourcingAdmin();
   const id = String(formData.get("prospectId") ?? "");
   const existing = await prisma.talentProspect.findFirst({
     where: { id, employerId: employer.id },
