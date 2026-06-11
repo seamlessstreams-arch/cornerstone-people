@@ -1,4 +1,4 @@
-// Cornerstone People — data model for the MVP.
+// Keni — data model for the MVP.
 //
 // The core mechanic: two sides build profiles, either side can express
 // interest, and identity + a conversation unlock ONLY when interest is mutual.

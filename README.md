@@ -1,4 +1,4 @@
-# Cornerstone People
+# Keni
 
 A regional, **supply-first** matching app for children's-home recruitment.
 Candidates and homes connect **only when interest is mutual** — and a matched

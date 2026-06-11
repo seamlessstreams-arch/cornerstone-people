@@ -5,7 +5,7 @@ export function VerifiedBadge({ className = "" }: { className?: string }) {
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200 ${className}`}
-      title="References pre-verified by Cornerstone"
+      title="References pre-verified by Keni"
     >
       <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
         <path

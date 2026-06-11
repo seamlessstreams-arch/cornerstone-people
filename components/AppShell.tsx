@@ -19,7 +19,7 @@ export function AppShell({
             href="/"
             className="mr-2 text-base font-semibold tracking-tight text-brand-700"
           >
-            Cornerstone People
+            Keni
           </Link>
           <nav className="flex flex-1 flex-wrap items-center gap-1">
             {links.map((l) => (

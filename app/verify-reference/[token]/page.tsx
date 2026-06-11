@@ -19,7 +19,7 @@ export default async function VerifyReferencePage({
           href="/"
           className="text-lg font-semibold tracking-tight text-brand-700"
         >
-          Cornerstone People
+          Keni
         </Link>
 
         <div className="mt-6 card">
@@ -50,8 +50,7 @@ export default async function VerifyReferencePage({
               <p className="mt-3 text-sm text-stone-600">
                 Hello {reference.refereeName}, a candidate has listed you as a
                 referee (relationship:{" "}
-                <strong>{reference.relationship}</strong>) on Cornerstone
-                People.
+                <strong>{reference.relationship}</strong>) on Keni.
               </p>
               <p className="mt-3 text-sm text-stone-600">
                 By confirming, you verify that you are willing to act as a

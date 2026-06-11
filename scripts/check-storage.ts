@@ -33,7 +33,7 @@ async function main() {
   }
 
   const path = `__healthcheck__/${Date.now()}.txt`;
-  const body = new TextEncoder().encode("cornerstone-people storage ok");
+  const body = new TextEncoder().encode("keni storage ok");
 
   console.log("→ uploading test object…");
   const up = await supabase.storage.from(BUCKETS.candidateCvs).upload(path, body, {
