@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { requireEmployer } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { analyseReference, assessExceptionalStart } from "@/lib/safer-recruitment";
+import { assessShadowShift } from "@/lib/shadow";
 import {
   SR_STAGES,
   SR_HUMAN_SIGNOFF_STAGES,
@@ -622,6 +623,80 @@ export async function reviewHealthDeclaration(formData: FormData) {
     entityType: "SaferRecruitmentCase",
     entityId: c.id,
     summary: `Health declaration reviewed (${str(formData, "fitnessOutcome") ?? "—"})`,
+  });
+  revalidatePath(`/employer/safer-recruitment/${c.id}`);
+}
+
+// --- Shadow shift -------------------------------------------------------
+
+export async function saveShadowShift(formData: FormData) {
+  const { employer, user } = await requireEmployer();
+  const caseId = String(formData.get("caseId") ?? "");
+  const c = await ownCase(employer.id, caseId);
+
+  const payload = {
+    shiftDate: date(formData, "shiftDate"),
+    supervisorName: str(formData, "supervisorName"),
+    riskAssessed: bool(formData, "riskAssessed"),
+    supervisedAtAllTimes: bool(formData, "supervisedAtAllTimes"),
+    notCountedInStaffing: bool(formData, "notCountedInStaffing"),
+    noAccessToChildInfo: bool(formData, "noAccessToChildInfo"),
+    notes: str(formData, "notes"),
+  };
+
+  await prisma.shadowShift.upsert({
+    where: { caseId: c.id },
+    // Saving the plan never authorises it.
+    create: { caseId: c.id, status: "DRAFT", ...payload },
+    update: payload,
+  });
+  await logAudit({
+    actor: user,
+    action: "SHADOW_SHIFT_SAVED",
+    entityType: "SaferRecruitmentCase",
+    entityId: c.id,
+    summary: "Shadow-shift plan updated",
+  });
+  revalidatePath(`/employer/safer-recruitment/${c.id}`);
+}
+
+// Named manager authorisation — refuses unless the risk assessment, supervisor
+// and every hard control are in place.
+export async function authoriseShadowShift(formData: FormData) {
+  const { employer, user } = await requireEmployer();
+  const caseId = String(formData.get("caseId") ?? "");
+  const approverName = str(formData, "approverName");
+  const c = await ownCase(employer.id, caseId);
+
+  const ss = await prisma.shadowShift.findUnique({ where: { caseId: c.id } });
+  if (!ss || !approverName) {
+    revalidatePath(`/employer/safer-recruitment/${c.id}`);
+    return;
+  }
+
+  const readiness = assessShadowShift({
+    supervisorName: ss.supervisorName,
+    shiftDate: ss.shiftDate,
+    riskAssessed: ss.riskAssessed,
+    supervisedAtAllTimes: ss.supervisedAtAllTimes,
+    notCountedInStaffing: ss.notCountedInStaffing,
+    noAccessToChildInfo: ss.noAccessToChildInfo,
+  });
+  if (!readiness.readyToAuthorise) {
+    revalidatePath(`/employer/safer-recruitment/${c.id}`);
+    return;
+  }
+
+  await prisma.shadowShift.update({
+    where: { caseId: c.id },
+    data: { status: "AUTHORISED", authorisedBy: approverName, authorisedAt: new Date() },
+  });
+  await logAudit({
+    actor: user,
+    action: "SHADOW_SHIFT_AUTHORISED",
+    entityType: "SaferRecruitmentCase",
+    entityId: c.id,
+    summary: `Shadow shift authorised by ${approverName}`,
   });
   revalidatePath(`/employer/safer-recruitment/${c.id}`);
 }

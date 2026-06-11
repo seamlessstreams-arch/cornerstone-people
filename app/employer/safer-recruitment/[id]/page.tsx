@@ -61,7 +61,10 @@ import {
   reviewSelfDeclaration,
   sendHealthDeclarationLink,
   reviewHealthDeclaration,
+  saveShadowShift,
+  authoriseShadowShift,
 } from "@/app/actions/safer-recruitment";
+import { assessShadowShift } from "@/lib/shadow";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +112,17 @@ export default async function CaseDetail({ params }: { params: { id: string } })
   const ex = c.exceptionalStart;
   const sd = c.selfDeclaration;
   const hd = c.healthDeclaration;
+  const shadow = c.shadowShift;
+  const shadowReadiness = shadow
+    ? assessShadowShift({
+        supervisorName: shadow.supervisorName,
+        shiftDate: shadow.shiftDate,
+        riskAssessed: shadow.riskAssessed,
+        supervisedAtAllTimes: shadow.supervisedAtAllTimes,
+        notCountedInStaffing: shadow.notCountedInStaffing,
+        noAccessToChildInfo: shadow.noAccessToChildInfo,
+      })
+    : null;
   const exReadiness = ex
     ? assessExceptionalStart({
         businessReason: ex.businessReason,
@@ -928,6 +942,100 @@ export default async function CaseDetail({ params }: { params: { id: string } })
               <button className="btn-primary px-4 py-2 text-sm">
                 Approve supervised start
               </button>
+            </form>
+          )
+        ) : null}
+      </section>
+
+      {/* Shadow shift */}
+      <section className="card mt-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-stone-900">Shadow shift</h2>
+          {shadow ? (
+            <StatusBadge
+              status={shadow.status === "AUTHORISED" ? "ACCEPTED" : shadow.status}
+              label={shadow.status.toLowerCase()}
+            />
+          ) : null}
+        </div>
+        <HumanReviewRequiredBanner>
+          A supervised taster shift before a full start. It must be risk-assessed,
+          supervised at all times, never counted in staffing numbers, and never
+          given access to children&apos;s detailed personal information — and a
+          named manager must authorise it.
+        </HumanReviewRequiredBanner>
+
+        <form action={saveShadowShift} className="mt-3 grid gap-2 sm:grid-cols-2">
+          <input type="hidden" name="caseId" value={c.id} />
+          <div>
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-stone-400">
+              Shift date
+            </label>
+            <input
+              type="date"
+              name="shiftDate"
+              defaultValue={
+                shadow?.shiftDate
+                  ? new Date(shadow.shiftDate).toISOString().slice(0, 10)
+                  : ""
+              }
+              className="input"
+            />
+          </div>
+          <input
+            name="supervisorName"
+            defaultValue={shadow?.supervisorName ?? ""}
+            placeholder="Supervising staff member"
+            className="input"
+          />
+          <div className="sm:col-span-2 grid gap-1 sm:grid-cols-2">
+            <label className="flex items-center gap-2 text-xs text-stone-700">
+              <input type="checkbox" name="riskAssessed" defaultChecked={shadow?.riskAssessed} /> Risk assessment completed
+            </label>
+            <label className="flex items-center gap-2 text-xs text-stone-700">
+              <input type="checkbox" name="supervisedAtAllTimes" defaultChecked={shadow?.supervisedAtAllTimes} /> Supervised at all times
+            </label>
+            <label className="flex items-center gap-2 text-xs text-stone-700">
+              <input type="checkbox" name="notCountedInStaffing" defaultChecked={shadow?.notCountedInStaffing} /> Not counted in staffing numbers
+            </label>
+            <label className="flex items-center gap-2 text-xs text-stone-700">
+              <input type="checkbox" name="noAccessToChildInfo" defaultChecked={shadow?.noAccessToChildInfo} /> No access to children&apos;s detailed information
+            </label>
+          </div>
+          <textarea name="notes" defaultValue={shadow?.notes ?? ""} rows={2} placeholder="Risk / supervision notes" className="input sm:col-span-2" />
+          <button className="btn-secondary px-4 py-2 text-sm sm:col-span-2">Save shadow-shift plan</button>
+        </form>
+
+        {shadow ? (
+          shadow.authorisedBy ? (
+            <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+              Authorised by <strong>{shadow.authorisedBy}</strong> on {fmt(shadow.authorisedAt)}
+              {shadow.shiftDate ? ` for ${fmt(shadow.shiftDate)}` : ""}.
+            </p>
+          ) : shadowReadiness && !shadowReadiness.readyToAuthorise ? (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                Required before authorisation ({shadowReadiness.requirements.length})
+              </div>
+              <ul className="mt-1 space-y-1 text-sm text-amber-800">
+                {shadowReadiness.requirements.map((r) => (
+                  <li key={r}>• {r}</li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <form
+              action={authoriseShadowShift}
+              className="mt-4 flex flex-wrap items-end gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3"
+            >
+              <input type="hidden" name="caseId" value={c.id} />
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-stone-500">
+                  Manager authorisation (named)
+                </label>
+                <input name="approverName" placeholder="Manager name & role" className="input" required />
+              </div>
+              <button className="btn-primary px-4 py-2 text-sm">Authorise shadow shift</button>
             </form>
           )
         ) : null}

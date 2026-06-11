@@ -276,6 +276,7 @@ model SaferRecruitmentCase {
   qualifications    QualificationRecord[]
   selfDeclaration   SelfDeclaration?
   healthDeclaration HealthDeclaration?
+  shadowShift       ShadowShift?
   storedFiles       StoredFile[]
 }
 
@@ -564,6 +565,33 @@ model HealthDeclaration {
   reviewedAt     DateTime?
   fitnessOutcome String? // FIT | FIT_WITH_ADJUSTMENTS | OCCUPATIONAL_HEALTH_REFERRAL | NOT_FIT
   managerNotes   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Shadow shift — a supervised taster shift before a full start. Must be risk-
+// assessed, supervised at all times, never counted in staffing numbers, and
+// never given access to children's detailed personal information. A named
+// manager authorises it and allocates the supervising staff member.
+model ShadowShift {
+  id     String               @id @default(cuid())
+  caseId String               @unique
+  case   SaferRecruitmentCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  status      String    @default("DRAFT") // DRAFT | AUTHORISED | COMPLETED
+  shiftDate   DateTime?
+  supervisorName String?
+
+  // Hard controls — all required before authorisation.
+  riskAssessed           Boolean @default(false)
+  supervisedAtAllTimes   Boolean @default(false)
+  notCountedInStaffing   Boolean @default(false)
+  noAccessToChildInfo    Boolean @default(false)
+
+  notes      String?
+  authorisedBy String?
+  authorisedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
