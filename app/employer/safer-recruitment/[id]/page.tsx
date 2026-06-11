@@ -150,9 +150,14 @@ export default async function CaseDetail({ params }: { params: { id: string } })
         title={candidateName}
         subtitle={`Safer-recruitment case • ${SR_STAGE_LABELS[c.stage as SrStage]}`}
         action={
-          <Link href="/employer/safer-recruitment" className="btn-secondary">
-            ← All cases
-          </Link>
+          <div className="flex gap-2">
+            <Link href={`/employer/safer-recruitment/${c.id}/interview`} className="btn-secondary">
+              Interview pack
+            </Link>
+            <Link href="/employer/safer-recruitment" className="btn-secondary">
+              ← All cases
+            </Link>
+          </div>
         }
       />
 
