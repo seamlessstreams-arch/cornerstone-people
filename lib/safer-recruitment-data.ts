@@ -1,7 +1,12 @@
 import "server-only";
 import { prisma } from "./db";
 import { REQUIRED_VERIFIED_REFERENCES } from "./constants";
-import { assessClearance, type ClearanceReport } from "./safer-recruitment";
+import {
+  assessClearance,
+  computeRag,
+  type ClearanceReport,
+  type RagReport,
+} from "./safer-recruitment";
 
 // Server-side data access for the Safer Recruitment OS. Every query here is
 // scoped to a single employer — an employer can only ever see safer-recruitment
@@ -46,6 +51,69 @@ export function clearanceForCase(c: CaseWithRelations): ClearanceReport {
   });
 }
 
+// Roll a case up into a single RED/AMBER/GREEN status + start-eligibility +
+// next action for the Command Centre. Structurally typed so it works with both
+// the list query and the full case load.
+type CaseForCompliance = {
+  stage: string;
+  clearedToStartBy: string | null;
+  references: {
+    status: string;
+    concernFlag: boolean;
+    qualityStatus: string | null;
+    disposition: string | null;
+    receivedAt: Date | null;
+  }[];
+  dbsCheck: { certificateSeen: boolean; riskReviewRequired: boolean } | null;
+  gapReview: { status: string } | null;
+};
+
+export function caseCompliance(c: CaseForCompliance): RagReport {
+  const received = c.references.filter(
+    (r) => r.status === "RECEIVED" || r.status === "VERIFIED"
+  ).length;
+  const anyConcern = c.references.some(
+    (r) =>
+      r.concernFlag ||
+      r.qualityStatus === "CONCERNING" ||
+      r.qualityStatus === "CONTRADICTORY"
+  );
+  const referenceAwaitingResponse = c.references.some(
+    (r) => (r.status === "SENT" || r.status === "CHASED") && !r.receivedAt
+  );
+  const referenceNeedsClarification = c.references.some(
+    (r) =>
+      r.status === "RECEIVED" &&
+      r.disposition !== "ACCEPTED" &&
+      (r.disposition === "MORE_INFORMATION_REQUIRED" ||
+        r.qualityStatus === "REQUIRES_HUMAN_REVIEW" ||
+        r.qualityStatus === "INCOMPLETE" ||
+        r.qualityStatus === "BASIC")
+  );
+
+  const signedOff = !!c.clearedToStartBy;
+
+  return computeRag({
+    stage: c.stage,
+    humanSignedOff: signedOff,
+    referencesReceived: received,
+    referencesRequired: REQUIRED_VERIFIED_REFERENCES,
+    anyReferenceConcern: anyConcern,
+    referenceAwaitingResponse,
+    referenceNeedsClarification,
+    dbsCertificateSeen: c.dbsCheck?.certificateSeen ?? false,
+    dbsRiskReviewRequired: c.dbsCheck?.riskReviewRequired ?? false,
+    // Right-to-work is not yet a first-class check; until it is, a cleared
+    // sign-off is the point at which a manager confirms it. Non-cleared cases
+    // therefore correctly surface "right to work not verified" as outstanding.
+    rightToWorkVerified: signedOff,
+    employmentGapsReviewed:
+      !!c.gapReview && c.gapReview.status !== "NEEDS_EXPLANATION",
+    employmentGapConcern:
+      c.gapReview?.status === "CONCERN" || c.gapReview?.status === "ESCALATED",
+  });
+}
+
 function daysBetween(a: Date, b: Date): number {
   return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
 }
@@ -63,9 +131,18 @@ export async function dashboardStats(employerId: string) {
     orderBy: { updatedAt: "desc" },
   });
 
-  const active = cases.filter(
+  const casesWithCompliance = cases.map((c) => ({
+    ...c,
+    compliance: caseCompliance(c),
+  }));
+
+  const active = casesWithCompliance.filter(
     (c) => !["REJECTED", "WITHDRAWN", "TALENT_BANK"].includes(c.stage)
   );
+
+  const red = active.filter((c) => c.compliance.rag === "RED").length;
+  const amber = active.filter((c) => c.compliance.rag === "AMBER").length;
+  const green = active.filter((c) => c.compliance.rag === "GREEN").length;
 
   const referenceHold = cases.filter((c) => c.stage === "REFERENCE_HOLD").length;
   const dbsHold = cases.filter((c) => c.stage === "DBS_HOLD").length;
@@ -103,9 +180,12 @@ export async function dashboardStats(employerId: string) {
   ).length;
 
   return {
-    cases,
+    cases: casesWithCompliance,
     total: cases.length,
     activeCount: active.length,
+    red,
+    amber,
+    green,
     referenceHold,
     dbsHold,
     gapHold,

@@ -184,6 +184,14 @@ export function StatCard({
 }
 
 const STATUS_TONES: Record<string, string> = {
+  // RAG compliance + start-eligibility
+  GREEN: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  AMBER: "bg-amber-50 text-amber-700 ring-amber-200",
+  RED: "bg-rose-50 text-rose-700 ring-rose-200",
+  CLEARED: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  CONDITIONAL: "bg-amber-50 text-amber-700 ring-amber-200",
+  EXCEPTIONAL_SUPERVISED_ONLY: "bg-amber-50 text-amber-700 ring-amber-200",
+  NOT_ELIGIBLE: "bg-rose-50 text-rose-700 ring-rose-200",
   // greens
   STRONG: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   ADEQUATE: "bg-emerald-50 text-emerald-700 ring-emerald-200",
