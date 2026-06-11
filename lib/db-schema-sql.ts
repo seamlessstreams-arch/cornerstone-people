@@ -211,6 +211,14 @@ CREATE TABLE "ReferenceRequest" (
     "disposition" TEXT,
     "concernFlag" BOOLEAN NOT NULL DEFAULT false,
     "rmReviewRequested" BOOLEAN NOT NULL DEFAULT false,
+    "publicToken" TEXT,
+    "tokenExpiresAt" TIMESTAMP(3),
+    "submittedIp" TEXT,
+    "submittedUserAgent" TEXT,
+    "refereeJobTitle" TEXT,
+    "refereeAuthorisedConfirmed" BOOLEAN NOT NULL DEFAULT false,
+    "workedWithChildren" BOOLEAN,
+    "wouldReEmploy" BOOLEAN,
     "createdBy" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -404,6 +412,9 @@ CREATE UNIQUE INDEX "Match_candidateId_employerId_key" ON "Match"("candidateId",
 
 -- CreateIndex
 CREATE UNIQUE INDEX "SaferRecruitmentCase_matchId_key" ON "SaferRecruitmentCase"("matchId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ReferenceRequest_publicToken_key" ON "ReferenceRequest"("publicToken");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "EmploymentGapReview_caseId_key" ON "EmploymentGapReview"("caseId");

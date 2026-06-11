@@ -319,6 +319,18 @@ model ReferenceRequest {
   concernFlag   Boolean @default(false)
   rmReviewRequested Boolean @default(false)
 
+  // Public mobile reference form — a one-time link the referee completes
+  // themselves. Captures provenance (IP / user-agent / timestamp) for the audit
+  // trail; the rule-based analyser runs on submission just as for a pasted one.
+  publicToken                String?   @unique
+  tokenExpiresAt             DateTime?
+  submittedIp                String?
+  submittedUserAgent         String?
+  refereeJobTitle            String?
+  refereeAuthorisedConfirmed Boolean   @default(false)
+  workedWithChildren         Boolean?
+  wouldReEmploy              Boolean?
+
   createdBy String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
