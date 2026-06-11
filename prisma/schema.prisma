@@ -242,9 +242,10 @@ model SaferRecruitmentCase {
   dbsCheck         DbsCheck?
   identityCheck    IdentityRightToWorkCheck?
   exceptionalStart ExceptionalStartAssessment?
-  qualifications   QualificationRecord[]
-  selfDeclaration  SelfDeclaration?
-  storedFiles      StoredFile[]
+  qualifications    QualificationRecord[]
+  selfDeclaration   SelfDeclaration?
+  healthDeclaration HealthDeclaration?
+  storedFiles       StoredFile[]
 }
 
 // Reusable, employer-scoped referee / organisation contact details.
@@ -496,6 +497,42 @@ model SelfDeclaration {
   reviewedAt        DateTime?
   reviewOutcome     String? // CLEAR | DISCLOSURE_ACCEPTED | ESCALATED
   managerNotes      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Health / fitness declaration — requested after a conditional offer via a
+// one-time link. Role-related fitness only; the answers are sensitive health
+// data shown only to the employer on their own case, and a named manager
+// records the fitness decision (considering reasonable adjustments).
+model HealthDeclaration {
+  id     String               @id @default(cuid())
+  caseId String               @unique
+  case   SaferRecruitmentCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  status         String    @default("PENDING") // PENDING | SUBMITTED | REVIEWED
+  publicToken    String?   @unique
+  tokenExpiresAt DateTime?
+
+  // Candidate answers (role-related fitness only; sensitive — manager-only).
+  fitForRole                  Boolean?
+  conditionsAffectingRole     Boolean?
+  conditionsDetail            String?
+  reasonableAdjustmentsNeeded Boolean?
+  adjustmentsDetail           String?
+  declaredTruthful            Boolean   @default(false)
+
+  // Provenance.
+  submittedAt        DateTime?
+  submittedIp        String?
+  submittedUserAgent String?
+
+  // Named manager review.
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  fitnessOutcome String? // FIT | FIT_WITH_ADJUSTMENTS | OCCUPATIONAL_HEALTH_REFERRAL | NOT_FIT
+  managerNotes   String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -39,6 +39,7 @@ import {
   RISK_LEVELS,
   QUALIFICATION_KINDS,
   SELF_DECLARATION_OUTCOMES,
+  HEALTH_FITNESS_OUTCOMES,
   type SrStage,
   type ExceptionalStartStatus,
 } from "@/lib/constants";
@@ -58,6 +59,8 @@ import {
   deleteQualification,
   sendSelfDeclarationLink,
   reviewSelfDeclaration,
+  sendHealthDeclarationLink,
+  reviewHealthDeclaration,
 } from "@/app/actions/safer-recruitment";
 
 export const dynamic = "force-dynamic";
@@ -105,6 +108,7 @@ export default async function CaseDetail({ params }: { params: { id: string } })
   const compliance = caseCompliance(c);
   const ex = c.exceptionalStart;
   const sd = c.selfDeclaration;
+  const hd = c.healthDeclaration;
   const exReadiness = ex
     ? assessExceptionalStart({
         businessReason: ex.businessReason,
@@ -703,6 +707,85 @@ export default async function CaseDetail({ params }: { params: { id: string } })
                       Record manager review outcome…
                     </option>
                     {SELF_DECLARATION_OUTCOMES.map((o) => (
+                      <option key={o} value={o}>
+                        {o.replace(/_/g, " ").toLowerCase()}
+                      </option>
+                    ))}
+                  </select>
+                  <textarea name="managerNotes" rows={2} placeholder="Manager notes" className="input text-sm" />
+                  <button className="btn-primary px-3 py-1.5 text-xs">Record review</button>
+                </form>
+              )}
+            </div>
+          ) : null}
+        </section>
+
+        {/* Health / fitness declaration */}
+        <section className="card">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold text-stone-900">Health declaration</h2>
+            {hd ? (
+              <StatusBadge
+                status={hd.status === "REVIEWED" ? "ACCEPTED" : hd.status}
+                label={hd.status.toLowerCase()}
+              />
+            ) : null}
+          </div>
+          <p className="mt-1 text-xs text-stone-400">
+            Confidential fitness-for-role declaration, requested after a
+            conditional offer. Role-related questions only; a named manager
+            confirms fitness and considers reasonable adjustments.
+          </p>
+
+          <form action={sendHealthDeclarationLink} className="mt-3">
+            <input type="hidden" name="caseId" value={c.id} />
+            <button className="btn-secondary px-3 py-1.5 text-xs">
+              {hd ? "Re-issue candidate link" : "Send candidate link"}
+            </button>
+          </form>
+
+          {hd?.publicToken && hd.status === "PENDING" ? (
+            <div className="mt-2 rounded-md border border-brand-100 bg-brand-50 p-2 text-xs">
+              <div className="font-semibold text-brand-700">Candidate link</div>
+              <div className="mt-1 break-all font-mono text-stone-600">
+                {appUrl()}/health-declaration/{hd.publicToken}
+              </div>
+              <div className="mt-1 text-stone-400">Expires {fmt(hd.tokenExpiresAt)}.</div>
+            </div>
+          ) : null}
+
+          {hd && hd.status !== "PENDING" ? (
+            <div className="mt-3 space-y-2 text-sm">
+              <ul className="space-y-1 text-xs text-stone-600">
+                <li>Fit for role: {hd.fitForRole ? "Yes" : "No"}</li>
+                <li>Condition affecting role: {hd.conditionsAffectingRole ? "Yes" : "No"}</li>
+                <li>Adjustments would help: {hd.reasonableAdjustmentsNeeded ? "Yes" : "No"}</li>
+              </ul>
+              {hd.conditionsDetail ? (
+                <p className="rounded bg-stone-50 p-2 text-xs text-stone-700">
+                  <span className="font-semibold">Condition:</span> {hd.conditionsDetail}
+                </p>
+              ) : null}
+              {hd.adjustmentsDetail ? (
+                <p className="rounded bg-stone-50 p-2 text-xs text-stone-700">
+                  <span className="font-semibold">Adjustments:</span> {hd.adjustmentsDetail}
+                </p>
+              ) : null}
+
+              {hd.reviewedAt ? (
+                <p className="text-xs text-stone-500">
+                  Reviewed by {hd.reviewedBy} on {fmt(hd.reviewedAt)} — outcome:{" "}
+                  <strong>{hd.fitnessOutcome ?? "—"}</strong>.
+                  {hd.managerNotes ? ` ${hd.managerNotes}` : ""}
+                </p>
+              ) : (
+                <form action={reviewHealthDeclaration} className="mt-1 space-y-2">
+                  <input type="hidden" name="caseId" value={c.id} />
+                  <select name="fitnessOutcome" defaultValue="" required className="input text-sm">
+                    <option value="" disabled>
+                      Record fitness decision…
+                    </option>
+                    {HEALTH_FITNESS_OUTCOMES.map((o) => (
                       <option key={o} value={o}>
                         {o.replace(/_/g, " ").toLowerCase()}
                       </option>

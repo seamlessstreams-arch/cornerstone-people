@@ -30,6 +30,7 @@ export async function loadCase(employerId: string, caseId: string) {
       exceptionalStart: true,
       qualifications: { orderBy: { createdAt: "asc" } },
       selfDeclaration: true,
+      healthDeclaration: true,
     },
   });
   return c;
