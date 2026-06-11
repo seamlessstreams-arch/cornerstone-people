@@ -350,3 +350,125 @@ export function assessClearance(input: ClearanceInputs): ClearanceReport {
     readyForHumanDecision: outstanding.length === 0,
   };
 }
+
+// ---------------------------------------------------------------------------
+// RAG compliance status (rule-based)
+//
+// Rolls the per-check state of a case up into a single RED / AMBER / GREEN
+// status plus a start-eligibility band and the single next action, for the
+// Safer Recruitment Command Centre. Like everything else here it is advisory:
+// GREEN / CLEARED is only ever reachable once a human has signed the case off
+// — the function can never itself clear anyone.
+// ---------------------------------------------------------------------------
+
+export type Rag = "RED" | "AMBER" | "GREEN";
+
+export type StartEligibility =
+  | "NOT_ELIGIBLE"
+  | "CONDITIONAL"
+  | "EXCEPTIONAL_SUPERVISED_ONLY"
+  | "CLEARED";
+
+export type RagInputs = {
+  stage: string;
+  /** A manager has recorded a cleared-to-start sign-off. */
+  humanSignedOff: boolean;
+  referencesReceived: number;
+  referencesRequired: number;
+  anyReferenceConcern: boolean;
+  /** At least one reference has been sent/chased but not yet returned. */
+  referenceAwaitingResponse: boolean;
+  /** A returned reference still needs clarification before it can be accepted. */
+  referenceNeedsClarification: boolean;
+  dbsCertificateSeen: boolean;
+  dbsRiskReviewRequired: boolean;
+  rightToWorkVerified: boolean;
+  employmentGapsReviewed: boolean;
+  employmentGapConcern: boolean;
+};
+
+export type RagReport = {
+  rag: Rag;
+  startEligibility: StartEligibility;
+  blockers: string[];
+  outstanding: string[];
+  nextAction: string;
+};
+
+export function computeRag(i: RagInputs): RagReport {
+  const blockers: string[] = [];
+  const outstanding: string[] = [];
+
+  // Hard concerns — these always pull a human in (RED, never auto-cleared).
+  if (i.anyReferenceConcern)
+    blockers.push("Reference flagged as concerning — unresolved");
+  if (i.dbsRiskReviewRequired)
+    blockers.push("DBS disclosure needs a risk review");
+  if (i.employmentGapConcern)
+    blockers.push("Employment-gap review raised a concern");
+
+  // Mandatory evidence still outstanding.
+  if (!i.dbsCertificateSeen) outstanding.push("DBS certificate not yet seen");
+  if (!i.rightToWorkVerified) outstanding.push("Right to work not verified");
+  if (!i.employmentGapsReviewed) outstanding.push("Employment gaps not reviewed");
+  if (i.referencesReceived < i.referencesRequired) {
+    outstanding.push(
+      `${i.referencesReceived}/${i.referencesRequired} references received`,
+    );
+  } else if (i.referenceNeedsClarification) {
+    outstanding.push("A reference needs clarification");
+  }
+
+  let rag: Rag;
+  let startEligibility: StartEligibility;
+  let nextAction: string;
+
+  if (i.stage === "EXCEPTIONAL_SUPERVISED_START") {
+    rag = "AMBER";
+    startEligibility = "EXCEPTIONAL_SUPERVISED_ONLY";
+    nextAction = outstanding.length
+      ? `Supervised start only — keep chasing: ${outstanding.join("; ")}.`
+      : "Supervised start in effect — complete final manager sign-off.";
+  } else if (blockers.length || i.stage === "RM_REVIEW_REQUIRED") {
+    rag = "RED";
+    startEligibility = "NOT_ELIGIBLE";
+    nextAction = blockers.length
+      ? `RM/RI review: ${blockers[0]}.`
+      : "RM/RI to review and record a decision.";
+  } else if (
+    i.stage === "CLEARED_TO_START" &&
+    i.humanSignedOff &&
+    !outstanding.length
+  ) {
+    rag = "GREEN";
+    startEligibility = "CLEARED";
+    nextAction = "Cleared to start — staff file complete.";
+  } else if (!outstanding.length) {
+    // Everything gathered, no concerns — only the human gate remains.
+    rag = "AMBER";
+    startEligibility = "CONDITIONAL";
+    nextAction = i.humanSignedOff
+      ? "Move the case to cleared to start."
+      : "Ready for manager sign-off.";
+  } else {
+    // Items still outstanding. References in flight are an AMBER "in progress";
+    // a mandatory check missing with nothing moving is RED "not eligible".
+    const referencesInFlight =
+      i.referenceAwaitingResponse || i.referenceNeedsClarification;
+    const mandatoryMissing =
+      !i.dbsCertificateSeen ||
+      !i.rightToWorkVerified ||
+      !i.employmentGapsReviewed ||
+      i.referencesReceived === 0;
+    if (mandatoryMissing && !referencesInFlight) {
+      rag = "RED";
+      startEligibility = "NOT_ELIGIBLE";
+    } else {
+      rag = "AMBER";
+      startEligibility = "CONDITIONAL";
+    }
+    nextAction = `Outstanding: ${outstanding.join("; ")}.`;
+  }
+
+  return { rag, startEligibility, blockers, outstanding, nextAction };
+}

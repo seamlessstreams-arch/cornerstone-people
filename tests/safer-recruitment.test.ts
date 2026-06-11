@@ -4,6 +4,8 @@ import {
   analyseReference,
   checkEmploymentGaps,
   assessClearance,
+  computeRag,
+  type RagInputs,
 } from "../lib/safer-recruitment";
 
 // Pure-logic tests — no DB needed. These pin the safety-critical guarantees:
@@ -112,4 +114,93 @@ test("assessClearance: concern is a blocker even when nothing outstanding", () =
     employmentGapStatus: "ACCEPTED",
   });
   assert.ok(report.blockers.length > 0);
+});
+
+// ---------------------------------------------------------------------------
+// computeRag — RAG compliance roll-up. Pins the safety guarantees: GREEN /
+// CLEARED is unreachable without a human sign-off, and any concern forces RED.
+// ---------------------------------------------------------------------------
+
+const baseRag: RagInputs = {
+  stage: "CHECKS_IN_PROGRESS",
+  humanSignedOff: false,
+  referencesReceived: 0,
+  referencesRequired: 2,
+  anyReferenceConcern: false,
+  referenceAwaitingResponse: false,
+  referenceNeedsClarification: false,
+  dbsCertificateSeen: false,
+  dbsRiskReviewRequired: false,
+  rightToWorkVerified: false,
+  employmentGapsReviewed: false,
+  employmentGapConcern: false,
+};
+
+test("computeRag: a fresh case with nothing done is RED / not eligible", () => {
+  const r = computeRag(baseRag);
+  assert.equal(r.rag, "RED");
+  assert.equal(r.startEligibility, "NOT_ELIGIBLE");
+});
+
+test("computeRag: references in flight (DBS seen, gaps ok, RTW ok) is AMBER", () => {
+  const r = computeRag({
+    ...baseRag,
+    dbsCertificateSeen: true,
+    rightToWorkVerified: true,
+    employmentGapsReviewed: true,
+    referencesReceived: 1,
+    referenceAwaitingResponse: true,
+  });
+  assert.equal(r.rag, "AMBER");
+  assert.equal(r.startEligibility, "CONDITIONAL");
+});
+
+test("computeRag: a reference concern forces RED even when otherwise complete", () => {
+  const r = computeRag({
+    ...baseRag,
+    stage: "CLEARED_TO_START",
+    humanSignedOff: true,
+    dbsCertificateSeen: true,
+    rightToWorkVerified: true,
+    employmentGapsReviewed: true,
+    referencesReceived: 2,
+    anyReferenceConcern: true,
+  });
+  assert.equal(r.rag, "RED");
+  assert.ok(r.blockers.length > 0);
+});
+
+test("computeRag: GREEN/CLEARED only with sign-off and nothing outstanding", () => {
+  const cleared = computeRag({
+    ...baseRag,
+    stage: "CLEARED_TO_START",
+    humanSignedOff: true,
+    dbsCertificateSeen: true,
+    rightToWorkVerified: true,
+    employmentGapsReviewed: true,
+    referencesReceived: 2,
+  });
+  assert.equal(cleared.rag, "GREEN");
+  assert.equal(cleared.startEligibility, "CLEARED");
+
+  // Same evidence but no human sign-off can never be GREEN.
+  const notSignedOff = computeRag({
+    ...baseRag,
+    stage: "CHECKS_IN_PROGRESS",
+    humanSignedOff: false,
+    dbsCertificateSeen: true,
+    rightToWorkVerified: true,
+    employmentGapsReviewed: true,
+    referencesReceived: 2,
+  });
+  assert.notEqual(notSignedOff.rag, "GREEN");
+});
+
+test("computeRag: exceptional supervised start is AMBER / supervised-only", () => {
+  const r = computeRag({
+    ...baseRag,
+    stage: "EXCEPTIONAL_SUPERVISED_START",
+    dbsCertificateSeen: true,
+  });
+  assert.equal(r.startEligibility, "EXCEPTIONAL_SUPERVISED_ONLY");
 });
