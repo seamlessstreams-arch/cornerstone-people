@@ -242,6 +242,127 @@ function splitCsvLine(line: string): string[] {
   return fields.map((f) => f.trim());
 }
 
+// ---------------------------------------------------------------------------
+// CV-Library alert-email / listing parser
+//
+// CV-Library "matching candidate" alerts (and the saved listing the recruiter
+// receives under their own licensed account) list each candidate as a labelled
+// block: a name, a "NN% Match" line, then Location / Job Title / Desired Role /
+// Skills / CV Keywords. We extract the non-contact fields only — names yes,
+// contact details never.
+// ---------------------------------------------------------------------------
+
+const CVL_LABELS = new Set([
+  "location",
+  "willing to travel",
+  "salary",
+  "willing to relocate",
+  "job title",
+  "uk driving licence",
+  "desired role",
+  "job type",
+  "date available",
+  "view cv",
+  "add note | select",
+]);
+
+const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+const PHONE_RE = /\b(?:0\d{9,10}|\+44\d{9,10})\b/g;
+
+function stripContact(s: string): string {
+  return s.replace(EMAIL_RE, "").replace(PHONE_RE, "").trim();
+}
+
+export function looksLikeCvLibrary(text: string): boolean {
+  return (
+    /\bview cv\b/i.test(text) ||
+    /cv keywords\s*:/i.test(text) ||
+    /\d{1,3}%\s*match/i.test(text)
+  );
+}
+
+export function parseCvLibraryListing(text: string): ParsedSourcedCandidate[] {
+  const lines = (text ?? "").split(/\r?\n/).map((l) => l.trim());
+  // Anchor each record on its "NN% Match" line.
+  const anchors: number[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\d{1,3}%\s*match$/i.test(lines[i])) anchors.push(i);
+  }
+
+  const valueAfter = (block: string[], label: string): string => {
+    for (let i = 0; i < block.length; i++) {
+      if (block[i].toLowerCase() === label && i + 1 < block.length)
+        return block[i + 1].trim();
+    }
+    return "";
+  };
+  const valueWithPrefix = (block: string[], pfx: RegExp): string => {
+    for (const b of block) {
+      const m = b.match(pfx);
+      if (m) return b.slice(m[0].length).trim();
+    }
+    return "";
+  };
+  const cleanSummary = (s: string): string => {
+    let out = stripContact(s);
+    for (const marker of [
+      "PROFESSIONAL SUMMARY",
+      "PERSONAL STATEMENT",
+      "PROFESSIONAL BACKGROUND",
+      "Professional background",
+      "Professional Summary",
+      "Personal Statement",
+    ]) {
+      const idx = out.indexOf(marker);
+      if (idx !== -1) {
+        out = out.slice(idx + marker.length).replace(/^[\s:–-]+/, "");
+        break;
+      }
+    }
+    return out.replace(/\s+/g, " ").slice(0, 280).trim();
+  };
+
+  const out: ParsedSourcedCandidate[] = [];
+  for (let a = 0; a < anchors.length; a++) {
+    const idx = anchors[a];
+    // Name = nearest preceding non-empty line that isn't a label.
+    let name = "";
+    for (let j = idx - 1; j >= 0; j--) {
+      const L = lines[j];
+      if (!L) continue;
+      if (CVL_LABELS.has(L.toLowerCase())) continue;
+      if (/^\d{1,3}%\s*match$/i.test(L)) break;
+      if (/^profile\/cv last updated/i.test(L)) continue;
+      name = L;
+      break;
+    }
+    if (!name || EMAIL_RE.test(name)) continue;
+    EMAIL_RE.lastIndex = 0;
+
+    const end = a + 1 < anchors.length ? anchors[a + 1] : lines.length;
+    // Trim the trailing name of the *next* record out of this block.
+    const block = lines.slice(idx + 1, end);
+
+    const loc = valueAfter(block, "location");
+    const region = loc.includes(",") ? loc.split(",").pop()!.trim() : loc;
+    const role =
+      valueAfter(block, "job title") || valueAfter(block, "desired role");
+    const skills = stripContact(valueWithPrefix(block, /skills\s*:/i));
+    const summary = cleanSummary(valueWithPrefix(block, /cv keywords\s*:/i));
+
+    out.push({
+      name,
+      profileUrl: null,
+      region: region || null,
+      roleSought: role || null,
+      experienceLevel: null,
+      skills: skills || null,
+      summary: (loc ? `${loc} — ${summary}` : summary).slice(0, 300) || null,
+    });
+  }
+  return out;
+}
+
 export function parseSourcedList(text: string): ParsedSourcedCandidate[] {
   const out: ParsedSourcedCandidate[] = [];
   for (const raw of (text ?? "").split(/\r?\n/)) {
