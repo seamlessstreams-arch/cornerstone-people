@@ -18,15 +18,17 @@ export default async function TalentPipelinePage() {
     <div>
       <PageHeader
         title="Talent pipeline"
-        subtitle="A private, name-only list of people you're already sourcing — no contact details stored. When you're ready, invite a prospect to create a full, consented profile."
+        subtitle="A private, name-only list of people you're already sourcing — no contact details stored. Save a link to a candidate's profile (e.g. on CV-Library) and open it under your own licensed account. When you're ready, invite a prospect to create a full, consented profile."
       />
 
       <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
         <strong>Lawful use:</strong> only add people you have a legitimate basis
         to track (e.g. applicants you received). This list is private to your
         organisation, holds names only, and is never used to contact anyone — it
-        exists to help you remember who to invite onto the platform. The platform
-        does not import or scrape candidates from third parties.
+        exists to help you remember who to invite onto the platform. Keni does
+        not import or scrape candidates from third parties; any profile link you
+        save is opened under your own licensed account (e.g. CV-Library), where
+        their contact details remain.
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -51,6 +53,16 @@ export default async function TalentPipelinePage() {
                     <tr key={p.id} className="align-top hover:bg-stone-50">
                       <td className="px-4 py-3">
                         <div className="font-medium text-stone-900">{p.name}</div>
+                        {p.profileUrl ? (
+                          <a
+                            href={p.profileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-medium text-brand-700 hover:underline"
+                          >
+                            Open profile ↗
+                          </a>
+                        ) : null}
                         {p.note ? (
                           <div className="text-xs text-stone-400">{p.note}</div>
                         ) : null}
@@ -97,7 +109,13 @@ export default async function TalentPipelinePage() {
               <input name="name" required placeholder="Full name" className="input" />
               <input
                 name="source"
-                placeholder="Source (e.g. CV-Library application)"
+                placeholder="Source (e.g. CV-Library)"
+                className="input"
+              />
+              <input
+                name="profileUrl"
+                type="url"
+                placeholder="Profile link (opens in your own account)"
                 className="input"
               />
               <textarea name="note" rows={2} placeholder="Note (optional)" className="input" />

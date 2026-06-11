@@ -574,6 +574,10 @@ model TalentProspect {
 
   name   String   // name only — no email/phone fields by design
   source String?  // free text, e.g. "CV-Library application", "referral"
+  // A link to the candidate's profile on the source site (e.g. CV-Library).
+  // We store only the link — never the candidate's contact details — so the
+  // employer opens it under their own licensed account.
+  profileUrl String?
   note   String?
   stage  String   @default("NEW") // NEW | REVIEWING | INVITED | ARCHIVED
 
