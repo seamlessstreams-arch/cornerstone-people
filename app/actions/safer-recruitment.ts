@@ -320,6 +320,42 @@ export async function saveDbsCheck(formData: FormData) {
   revalidatePath(`/employer/safer-recruitment/${c.id}`);
 }
 
+export async function saveIdentityRightToWork(formData: FormData) {
+  const { employer, user } = await requireEmployer();
+  const caseId = String(formData.get("caseId") ?? "");
+  const c = await ownCase(employer.id, caseId);
+
+  const payload = {
+    identityDocumentType: str(formData, "identityDocumentType"),
+    identityDocumentSeen: bool(formData, "identityDocumentSeen"),
+    photographSeen: bool(formData, "photographSeen"),
+    likenessConfirmed: bool(formData, "likenessConfirmed"),
+    nameDiscrepancyExplained: bool(formData, "nameDiscrepancyExplained"),
+    rightToWorkVerified: bool(formData, "rightToWorkVerified"),
+    rightToWorkMethod: str(formData, "rightToWorkMethod"),
+    shareCode: str(formData, "shareCode"),
+    timeLimited: bool(formData, "timeLimited"),
+    followUpDate: date(formData, "followUpDate"),
+    notes: str(formData, "notes"),
+    checkedBy: user.email,
+    checkedAt: new Date(),
+  };
+
+  await prisma.identityRightToWorkCheck.upsert({
+    where: { caseId: c.id },
+    create: { caseId: c.id, ...payload },
+    update: payload,
+  });
+  await logAudit({
+    actor: user,
+    action: "IDENTITY_RTW_SAVED",
+    entityType: "SaferRecruitmentCase",
+    entityId: c.id,
+    summary: `Identity/right-to-work updated (identity seen: ${payload.identityDocumentSeen}, RTW verified: ${payload.rightToWorkVerified})`,
+  });
+  revalidatePath(`/employer/safer-recruitment/${c.id}`);
+}
+
 // --- Reference bank ------------------------------------------------------
 
 export async function saveReferenceBankEntry(formData: FormData) {

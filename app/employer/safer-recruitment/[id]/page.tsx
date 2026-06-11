@@ -41,6 +41,7 @@ import {
   recordReferenceResponse,
   setReferenceDisposition,
   saveDbsCheck,
+  saveIdentityRightToWork,
 } from "@/app/actions/safer-recruitment";
 
 export const dynamic = "force-dynamic";
@@ -359,9 +360,79 @@ export default async function CaseDetail({ params }: { params: { id: string } })
           </div>
         </section>
 
-        {/* DBS / readiness */}
+        {/* Identity & right to work */}
         <section className="card">
-          <h2 className="font-semibold text-stone-900">DBS &amp; right-to-work</h2>
+          <h2 className="font-semibold text-stone-900">Identity &amp; right to work</h2>
+          <p className="mt-1 text-xs text-stone-400">
+            Mandatory before a start. Record what a named person actually saw —
+            documents, likeness, and the right-to-work check.
+          </p>
+          <form action={saveIdentityRightToWork} className="mt-3 grid grid-cols-2 gap-2">
+            <input type="hidden" name="caseId" value={c.id} />
+            <input
+              name="identityDocumentType"
+              defaultValue={c.identityCheck?.identityDocumentType ?? ""}
+              placeholder="ID document (e.g. Passport)"
+              className="input col-span-2"
+            />
+            <label className="flex items-center gap-2 text-xs text-stone-600">
+              <input type="checkbox" name="identityDocumentSeen" defaultChecked={c.identityCheck?.identityDocumentSeen} /> ID document seen
+            </label>
+            <label className="flex items-center gap-2 text-xs text-stone-600">
+              <input type="checkbox" name="photographSeen" defaultChecked={c.identityCheck?.photographSeen} /> Recent photograph seen
+            </label>
+            <label className="flex items-center gap-2 text-xs text-stone-600">
+              <input type="checkbox" name="likenessConfirmed" defaultChecked={c.identityCheck?.likenessConfirmed} /> Likeness confirmed
+            </label>
+            <label className="flex items-center gap-2 text-xs text-stone-600">
+              <input type="checkbox" name="nameDiscrepancyExplained" defaultChecked={c.identityCheck?.nameDiscrepancyExplained} /> Name differences explained
+            </label>
+            <label className="col-span-2 mt-1 flex items-center gap-2 text-xs font-medium text-stone-700">
+              <input type="checkbox" name="rightToWorkVerified" defaultChecked={c.identityCheck?.rightToWorkVerified} /> Right to work verified
+            </label>
+            <input
+              name="rightToWorkMethod"
+              defaultValue={c.identityCheck?.rightToWorkMethod ?? ""}
+              placeholder="RTW method (e.g. Online share code)"
+              className="input"
+            />
+            <input
+              name="shareCode"
+              defaultValue={c.identityCheck?.shareCode ?? ""}
+              placeholder="Share code (if applicable)"
+              className="input"
+            />
+            <label className="flex items-center gap-2 text-xs text-stone-600">
+              <input type="checkbox" name="timeLimited" defaultChecked={c.identityCheck?.timeLimited} /> Time-limited permission
+            </label>
+            <div>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-stone-400">
+                Follow-up date
+              </label>
+              <input
+                type="date"
+                name="followUpDate"
+                defaultValue={
+                  c.identityCheck?.followUpDate
+                    ? new Date(c.identityCheck.followUpDate).toISOString().slice(0, 10)
+                    : ""
+                }
+                className="input"
+              />
+            </div>
+            <textarea name="notes" defaultValue={c.identityCheck?.notes ?? ""} rows={2} placeholder="Notes" className="input col-span-2" />
+            <button className="btn-primary col-span-2 px-3 py-2 text-sm">Save identity / right to work</button>
+          </form>
+          {c.identityCheck?.checkedBy ? (
+            <p className="mt-2 text-xs text-stone-400">
+              Last updated by {c.identityCheck.checkedBy} on {fmt(c.identityCheck.checkedAt)}.
+            </p>
+          ) : null}
+        </section>
+
+        {/* DBS / barred list */}
+        <section className="card">
+          <h2 className="font-semibold text-stone-900">DBS &amp; barred list</h2>
           <p className="mt-1 text-xs text-stone-400">
             Evidence workflow only — no live DBS integration. Record what was seen
             and whether a risk review is required.

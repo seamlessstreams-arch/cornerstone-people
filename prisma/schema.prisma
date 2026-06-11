@@ -240,6 +240,7 @@ model SaferRecruitmentCase {
   references       ReferenceRequest[]
   gapReview        EmploymentGapReview?
   dbsCheck         DbsCheck?
+  identityCheck    IdentityRightToWorkCheck?
   storedFiles      StoredFile[]
 }
 
@@ -354,6 +355,37 @@ model DbsCheck {
   notes            String?
 
   checkedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Identity + right-to-work evidence for a case. Mandatory pre-employment
+// checks: a candidate may not start without a right-to-work check, and missing
+// identity evidence is a hard blocker. Evidence workflow only — the actual
+// document/likeness confirmation is always a named human's act.
+model IdentityRightToWorkCheck {
+  id     String               @id @default(cuid())
+  caseId String               @unique
+  case   SaferRecruitmentCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  // Identity
+  identityDocumentType     String?
+  identityDocumentSeen     Boolean @default(false)
+  photographSeen           Boolean @default(false)
+  likenessConfirmed        Boolean @default(false)
+  nameDiscrepancyExplained Boolean @default(false)
+
+  // Right to work
+  rightToWorkVerified Boolean   @default(false)
+  rightToWorkMethod   String? // "Manual document check" | "Online share code" | ...
+  shareCode           String?
+  timeLimited         Boolean   @default(false)
+  followUpDate        DateTime? // for time-limited permission
+
+  checkedBy String?
+  checkedAt DateTime?
+  notes     String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

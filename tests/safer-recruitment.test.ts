@@ -131,6 +131,7 @@ const baseRag: RagInputs = {
   referenceNeedsClarification: false,
   dbsCertificateSeen: false,
   dbsRiskReviewRequired: false,
+  identityVerified: false,
   rightToWorkVerified: false,
   employmentGapsReviewed: false,
   employmentGapConcern: false,
@@ -142,10 +143,11 @@ test("computeRag: a fresh case with nothing done is RED / not eligible", () => {
   assert.equal(r.startEligibility, "NOT_ELIGIBLE");
 });
 
-test("computeRag: references in flight (DBS seen, gaps ok, RTW ok) is AMBER", () => {
+test("computeRag: references in flight (DBS seen, gaps ok, ID/RTW ok) is AMBER", () => {
   const r = computeRag({
     ...baseRag,
     dbsCertificateSeen: true,
+    identityVerified: true,
     rightToWorkVerified: true,
     employmentGapsReviewed: true,
     referencesReceived: 1,
@@ -155,12 +157,27 @@ test("computeRag: references in flight (DBS seen, gaps ok, RTW ok) is AMBER", ()
   assert.equal(r.startEligibility, "CONDITIONAL");
 });
 
+test("computeRag: missing identity keeps a case RED / not eligible", () => {
+  const r = computeRag({
+    ...baseRag,
+    dbsCertificateSeen: true,
+    rightToWorkVerified: true,
+    employmentGapsReviewed: true,
+    referencesReceived: 2,
+    identityVerified: false, // nothing in flight, a mandatory check missing
+  });
+  assert.equal(r.rag, "RED");
+  assert.equal(r.startEligibility, "NOT_ELIGIBLE");
+  assert.ok(r.outstanding.some((o) => /identity/i.test(o)));
+});
+
 test("computeRag: a reference concern forces RED even when otherwise complete", () => {
   const r = computeRag({
     ...baseRag,
     stage: "CLEARED_TO_START",
     humanSignedOff: true,
     dbsCertificateSeen: true,
+    identityVerified: true,
     rightToWorkVerified: true,
     employmentGapsReviewed: true,
     referencesReceived: 2,
@@ -176,6 +193,7 @@ test("computeRag: GREEN/CLEARED only with sign-off and nothing outstanding", () 
     stage: "CLEARED_TO_START",
     humanSignedOff: true,
     dbsCertificateSeen: true,
+    identityVerified: true,
     rightToWorkVerified: true,
     employmentGapsReviewed: true,
     referencesReceived: 2,
@@ -189,6 +207,7 @@ test("computeRag: GREEN/CLEARED only with sign-off and nothing outstanding", () 
     stage: "CHECKS_IN_PROGRESS",
     humanSignedOff: false,
     dbsCertificateSeen: true,
+    identityVerified: true,
     rightToWorkVerified: true,
     employmentGapsReviewed: true,
     referencesReceived: 2,
