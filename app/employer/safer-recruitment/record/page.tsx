@@ -68,6 +68,7 @@ export default async function SingleCentralRecord() {
                 <th className="px-3 py-2 font-medium">Barred list</th>
                 <th className="px-3 py-2 font-medium">References</th>
                 <th className="px-3 py-2 font-medium">Emp. gaps</th>
+                <th className="px-3 py-2 font-medium">Quals</th>
                 <th className="px-3 py-2 font-medium">Outstanding</th>
               </tr>
             </thead>
@@ -100,6 +101,7 @@ export default async function SingleCentralRecord() {
                   <Cell check={r.barredList} />
                   <Cell check={r.references} />
                   <Cell check={r.employmentGaps} />
+                  <Cell check={r.qualifications} />
                   <td className="max-w-xs px-3 py-2 text-xs text-stone-600">
                     {r.missing.length ? r.missing.join("; ") : "—"}
                   </td>

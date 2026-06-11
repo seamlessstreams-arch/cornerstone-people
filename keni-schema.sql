@@ -300,6 +300,25 @@ CREATE TABLE "ExceptionalStartAssessment" (
 );
 
 -- CreateTable
+CREATE TABLE "QualificationRecord" (
+    "id" TEXT NOT NULL,
+    "caseId" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "kind" TEXT,
+    "required" BOOLEAN NOT NULL DEFAULT false,
+    "certificateSeen" BOOLEAN NOT NULL DEFAULT false,
+    "verifiedWithIssuer" BOOLEAN NOT NULL DEFAULT false,
+    "reference" TEXT,
+    "awardedOn" TIMESTAMP(3),
+    "expiresOn" TIMESTAMP(3),
+    "notes" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "QualificationRecord_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "AuditLog" (
     "id" TEXT NOT NULL,
     "actorId" TEXT,
@@ -397,6 +416,9 @@ CREATE UNIQUE INDEX "IdentityRightToWorkCheck_caseId_key" ON "IdentityRightToWor
 CREATE UNIQUE INDEX "ExceptionalStartAssessment_caseId_key" ON "ExceptionalStartAssessment"("caseId");
 
 -- CreateIndex
+CREATE INDEX "QualificationRecord_caseId_idx" ON "QualificationRecord"("caseId");
+
+-- CreateIndex
 CREATE INDEX "AuditLog_entityType_entityId_idx" ON "AuditLog"("entityType", "entityId");
 
 -- CreateIndex
@@ -482,6 +504,9 @@ ALTER TABLE "IdentityRightToWorkCheck" ADD CONSTRAINT "IdentityRightToWorkCheck_
 
 -- AddForeignKey
 ALTER TABLE "ExceptionalStartAssessment" ADD CONSTRAINT "ExceptionalStartAssessment_caseId_fkey" FOREIGN KEY ("caseId") REFERENCES "SaferRecruitmentCase"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "QualificationRecord" ADD CONSTRAINT "QualificationRecord_caseId_fkey" FOREIGN KEY ("caseId") REFERENCES "SaferRecruitmentCase"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "StoredFile" ADD CONSTRAINT "StoredFile_candidateId_fkey" FOREIGN KEY ("candidateId") REFERENCES "Candidate"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -28,6 +28,7 @@ export async function loadCase(employerId: string, caseId: string) {
       dbsCheck: true,
       identityCheck: true,
       exceptionalStart: true,
+      qualifications: { orderBy: { createdAt: "asc" } },
     },
   });
   return c;
@@ -73,6 +74,7 @@ type CaseForCompliance = {
     rightToWorkVerified: boolean;
   } | null;
   gapReview: { status: string } | null;
+  qualifications?: { required: boolean; certificateSeen: boolean }[];
 };
 
 export function caseCompliance(c: CaseForCompliance): RagReport {
@@ -125,6 +127,9 @@ export function caseCompliance(c: CaseForCompliance): RagReport {
       !!c.gapReview && c.gapReview.status !== "NEEDS_EXPLANATION",
     employmentGapConcern:
       c.gapReview?.status === "CONCERN" || c.gapReview?.status === "ESCALATED",
+    requiredQualificationOutstanding: (c.qualifications ?? []).some(
+      (q) => q.required && !q.certificateSeen
+    ),
   });
 }
 
@@ -142,6 +147,7 @@ export async function dashboardStats(employerId: string) {
       gapReview: true,
       dbsCheck: true,
       identityCheck: true,
+      qualifications: true,
     },
     orderBy: { updatedAt: "desc" },
   });
@@ -227,6 +233,7 @@ export type StaffFileRow = {
   barredList: StaffFileCheck;
   references: StaffFileCheck;
   employmentGaps: StaffFileCheck;
+  qualifications: StaffFileCheck;
   compliance: RagReport;
   missing: string[];
 };
@@ -247,6 +254,7 @@ export async function staffFileIndex(employerId: string): Promise<StaffFileRow[]
       gapReview: true,
       dbsCheck: true,
       identityCheck: true,
+      qualifications: true,
     },
     orderBy: { candidate: { fullName: "asc" } },
   });
@@ -289,6 +297,17 @@ export async function staffFileIndex(employerId: string): Promise<StaffFileRow[]
         ok: !!c.gapReview && c.gapReview.status !== "NEEDS_EXPLANATION",
         detail: c.gapReview?.status ?? null,
       },
+      qualifications: (() => {
+        const quals = c.qualifications;
+        const seen = quals.filter((q) => q.certificateSeen).length;
+        const requiredOutstanding = quals.some(
+          (q) => q.required && !q.certificateSeen
+        );
+        return {
+          ok: quals.length > 0 && !requiredOutstanding,
+          detail: quals.length ? `${seen}/${quals.length} evidenced` : "none recorded",
+        };
+      })(),
       compliance,
       missing: [...compliance.blockers, ...compliance.outstanding],
     };

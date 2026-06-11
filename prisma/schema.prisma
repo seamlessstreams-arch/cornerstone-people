@@ -242,6 +242,7 @@ model SaferRecruitmentCase {
   dbsCheck         DbsCheck?
   identityCheck    IdentityRightToWorkCheck?
   exceptionalStart ExceptionalStartAssessment?
+  qualifications   QualificationRecord[]
   storedFiles      StoredFile[]
 }
 
@@ -422,6 +423,30 @@ model ExceptionalStartAssessment {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// A qualification, mandatory-training certificate or professional registration
+// on a candidate's staff file. Many per case. "Required" entries that aren't yet
+// evidenced surface as outstanding on the case.
+model QualificationRecord {
+  id     String               @id @default(cuid())
+  caseId String
+  case   SaferRecruitmentCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  title              String
+  kind               String? // Qualification | Mandatory training | ...
+  required           Boolean   @default(false)
+  certificateSeen    Boolean   @default(false)
+  verifiedWithIssuer Boolean   @default(false)
+  reference          String? // certificate number / URN
+  awardedOn          DateTime?
+  expiresOn          DateTime?
+  notes              String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([caseId])
 }
 
 // Append-only audit trail for important actions (principle 9).
