@@ -475,3 +475,54 @@ export function computeRag(i: RagInputs): RagReport {
 
   return { rag, startEligibility, blockers, outstanding, nextAction };
 }
+
+// ---------------------------------------------------------------------------
+// Exceptional / supervised start readiness (rule-based)
+//
+// Reports whether an exceptional supervised start is ready for a named RM/RI to
+// approve. It NEVER approves: it only lists what must be in place first. All
+// hard supervision controls are mandatory — a supervised start with a gap in
+// the controls is not a supervised start.
+// ---------------------------------------------------------------------------
+
+export type ExceptionalStartInputs = {
+  businessReason?: string | null;
+  riskLevel?: string | null;
+  riskMitigation?: string | null;
+  supervisorName?: string | null;
+  noSoleCharge: boolean;
+  noUnsupervisedAccess: boolean;
+  noIntimateCare: boolean;
+  noOvernight: boolean;
+  reviewDate?: string | Date | null;
+};
+
+export type ExceptionalStartReport = {
+  requirements: string[];
+  readyForApproval: boolean;
+};
+
+export function assessExceptionalStart(
+  i: ExceptionalStartInputs,
+): ExceptionalStartReport {
+  const requirements: string[] = [];
+
+  if (!i.businessReason?.trim())
+    requirements.push("Record the business reason for an early start");
+  if (!i.riskLevel?.trim()) requirements.push("Assess the risk level");
+  if (!i.riskMitigation?.trim())
+    requirements.push("Describe how the risk is mitigated");
+  if (!i.supervisorName?.trim())
+    requirements.push("Name the responsible supervisor");
+  if (!i.reviewDate) requirements.push("Set a review date");
+
+  // Every hard control must be in place.
+  if (!i.noSoleCharge) requirements.push("Confirm: never in sole charge");
+  if (!i.noUnsupervisedAccess)
+    requirements.push("Confirm: no unsupervised access");
+  if (!i.noIntimateCare) requirements.push("Confirm: no intimate / personal care");
+  if (!i.noOvernight)
+    requirements.push("Confirm: no overnight or off-site responsibility");
+
+  return { requirements, readyForApproval: requirements.length === 0 };
+}

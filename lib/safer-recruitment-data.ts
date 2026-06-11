@@ -27,6 +27,7 @@ export async function loadCase(employerId: string, caseId: string) {
       gapReview: true,
       dbsCheck: true,
       identityCheck: true,
+      exceptionalStart: true,
     },
   });
   return c;

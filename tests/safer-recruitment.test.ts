@@ -5,6 +5,7 @@ import {
   checkEmploymentGaps,
   assessClearance,
   computeRag,
+  assessExceptionalStart,
   type RagInputs,
 } from "../lib/safer-recruitment";
 
@@ -222,4 +223,49 @@ test("computeRag: exceptional supervised start is AMBER / supervised-only", () =
     dbsCertificateSeen: true,
   });
   assert.equal(r.startEligibility, "EXCEPTIONAL_SUPERVISED_ONLY");
+});
+
+// ---------------------------------------------------------------------------
+// assessExceptionalStart — the supervised-start approval gate. Pins that all
+// hard controls are mandatory and the gate never self-approves.
+// ---------------------------------------------------------------------------
+
+const fullExceptional = {
+  businessReason: "Urgent cover for a child's 1:1 place",
+  riskLevel: "moderate",
+  riskMitigation: "Paired with a DBS-cleared lead at all times",
+  supervisorName: "A. Manager (Registered Manager)",
+  noSoleCharge: true,
+  noUnsupervisedAccess: true,
+  noIntimateCare: true,
+  noOvernight: true,
+  reviewDate: "2026-07-01",
+};
+
+test("assessExceptionalStart: ready only when everything is in place", () => {
+  const r = assessExceptionalStart(fullExceptional);
+  assert.equal(r.readyForApproval, true);
+  assert.equal(r.requirements.length, 0);
+});
+
+test("assessExceptionalStart: a missing hard control blocks approval", () => {
+  const r = assessExceptionalStart({ ...fullExceptional, noSoleCharge: false });
+  assert.equal(r.readyForApproval, false);
+  assert.ok(r.requirements.some((x) => /sole charge/i.test(x)));
+});
+
+test("assessExceptionalStart: empty assessment lists every requirement", () => {
+  const r = assessExceptionalStart({
+    businessReason: null,
+    riskLevel: null,
+    riskMitigation: null,
+    supervisorName: null,
+    noSoleCharge: false,
+    noUnsupervisedAccess: false,
+    noIntimateCare: false,
+    noOvernight: false,
+    reviewDate: null,
+  });
+  assert.equal(r.readyForApproval, false);
+  assert.ok(r.requirements.length >= 9);
 });

@@ -276,6 +276,30 @@ CREATE TABLE "IdentityRightToWorkCheck" (
 );
 
 -- CreateTable
+CREATE TABLE "ExceptionalStartAssessment" (
+    "id" TEXT NOT NULL,
+    "caseId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'DRAFT',
+    "businessReason" TEXT,
+    "outstandingChecks" TEXT,
+    "riskLevel" TEXT,
+    "riskMitigation" TEXT,
+    "supervisorName" TEXT,
+    "noSoleCharge" BOOLEAN NOT NULL DEFAULT false,
+    "noUnsupervisedAccess" BOOLEAN NOT NULL DEFAULT false,
+    "noIntimateCare" BOOLEAN NOT NULL DEFAULT false,
+    "noOvernight" BOOLEAN NOT NULL DEFAULT false,
+    "supervisionNotes" TEXT,
+    "reviewDate" TIMESTAMP(3),
+    "approvedBy" TEXT,
+    "approvedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ExceptionalStartAssessment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "AuditLog" (
     "id" TEXT NOT NULL,
     "actorId" TEXT,
@@ -370,6 +394,9 @@ CREATE UNIQUE INDEX "DbsCheck_caseId_key" ON "DbsCheck"("caseId");
 CREATE UNIQUE INDEX "IdentityRightToWorkCheck_caseId_key" ON "IdentityRightToWorkCheck"("caseId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "ExceptionalStartAssessment_caseId_key" ON "ExceptionalStartAssessment"("caseId");
+
+-- CreateIndex
 CREATE INDEX "AuditLog_entityType_entityId_idx" ON "AuditLog"("entityType", "entityId");
 
 -- CreateIndex
@@ -452,6 +479,9 @@ ALTER TABLE "DbsCheck" ADD CONSTRAINT "DbsCheck_caseId_fkey" FOREIGN KEY ("caseI
 
 -- AddForeignKey
 ALTER TABLE "IdentityRightToWorkCheck" ADD CONSTRAINT "IdentityRightToWorkCheck_caseId_fkey" FOREIGN KEY ("caseId") REFERENCES "SaferRecruitmentCase"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ExceptionalStartAssessment" ADD CONSTRAINT "ExceptionalStartAssessment_caseId_fkey" FOREIGN KEY ("caseId") REFERENCES "SaferRecruitmentCase"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "StoredFile" ADD CONSTRAINT "StoredFile_candidateId_fkey" FOREIGN KEY ("candidateId") REFERENCES "Candidate"("id") ON DELETE CASCADE ON UPDATE CASCADE;
