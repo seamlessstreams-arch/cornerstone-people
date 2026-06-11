@@ -9,7 +9,11 @@ import {
   uploadCaseDocument,
   getCaseDocumentUrl,
 } from "@/app/actions/documents";
-import { loadCase, clearanceForCase } from "@/lib/safer-recruitment-data";
+import {
+  loadCase,
+  clearanceForCase,
+  caseCompliance,
+} from "@/lib/safer-recruitment-data";
 import {
   PageHeader,
   StatusBadge,
@@ -41,6 +45,19 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const START_ELIGIBILITY_LABELS: Record<string, string> = {
+  NOT_ELIGIBLE: "Not eligible",
+  CONDITIONAL: "Conditional",
+  EXCEPTIONAL_SUPERVISED_ONLY: "Exceptional — supervised",
+  CLEARED: "Cleared",
+};
+
+const RAG_BANNER: Record<string, string> = {
+  RED: "border-rose-400 bg-rose-50",
+  AMBER: "border-amber-400 bg-amber-50",
+  GREEN: "border-emerald-400 bg-emerald-50",
+};
+
 function fmt(d: Date | null | undefined) {
   return d ? new Date(d).toLocaleDateString("en-GB") : "—";
 }
@@ -51,6 +68,7 @@ export default async function CaseDetail({ params }: { params: { id: string } })
   if (!c) notFound();
 
   const clearance = clearanceForCase(c);
+  const compliance = caseCompliance(c);
   const candidateName = c.candidate.fullName ?? "Candidate";
 
   const caseDocs = await prisma.storedFile.findMany({
@@ -83,6 +101,26 @@ export default async function CaseDetail({ params }: { params: { id: string } })
           </Link>
         }
       />
+
+      {/* At-a-glance compliance status — the one-line answer a manager needs
+          the moment they open a candidate. */}
+      <div className={`mb-6 rounded-xl border-l-4 p-4 ${RAG_BANNER[compliance.rag]}`}>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={compliance.rag} label={compliance.rag.toLowerCase()} />
+          <StatusBadge
+            status={compliance.startEligibility}
+            label={START_ELIGIBILITY_LABELS[compliance.startEligibility]}
+          />
+        </div>
+        <p className="mt-2 text-sm font-medium text-stone-800">
+          {compliance.nextAction}
+        </p>
+        {compliance.blockers.length ? (
+          <p className="mt-1 text-xs font-medium text-rose-700">
+            Blockers: {compliance.blockers.join("; ")}
+          </p>
+        ) : null}
+      </div>
 
       {/* Stage + human sign-off */}
       <div className="card mb-6">
