@@ -13,6 +13,7 @@ import {
   loadCase,
   clearanceForCase,
   caseCompliance,
+  caseAuditTrail,
 } from "@/lib/safer-recruitment-data";
 import { assessExceptionalStart } from "@/lib/safer-recruitment";
 import {
@@ -74,6 +75,23 @@ function fmt(d: Date | null | undefined) {
   return d ? new Date(d).toLocaleDateString("en-GB") : "—";
 }
 
+function fmtDateTime(d: Date) {
+  return new Date(d).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function actionLabel(action: string) {
+  return action
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/^\w/, (ch) => ch.toUpperCase());
+}
+
 export default async function CaseDetail({ params }: { params: { id: string } }) {
   const { employer } = await requireEmployer();
   const c = await loadCase(employer.id, params.id);
@@ -108,6 +126,7 @@ export default async function CaseDetail({ params }: { params: { id: string } })
     createdAt: d.createdAt.toISOString(),
   }));
   const storageReady = isSupabaseConfigured();
+  const auditTrail = await caseAuditTrail(employer.id, c.id);
 
   const tplCtx = {
     candidateName,
@@ -766,6 +785,37 @@ export default async function CaseDetail({ params }: { params: { id: string } })
           <textarea name="notes" defaultValue={c.notes ?? ""} rows={3} className="input" />
           <button className="btn-secondary px-4 py-2 text-sm">Save notes</button>
         </form>
+      </section>
+
+      {/* Audit trail */}
+      <section className="card mt-6">
+        <h2 className="font-semibold text-stone-900">Audit trail</h2>
+        <p className="mt-1 text-xs text-stone-400">
+          Append-only history of actions on this case — who did what, and when.
+        </p>
+        {auditTrail.length === 0 ? (
+          <p className="mt-3 text-sm text-stone-500">No recorded activity yet.</p>
+        ) : (
+          <ol className="mt-3 space-y-3">
+            {auditTrail.map((a) => (
+              <li key={a.id} className="flex gap-3">
+                <div className="mt-1.5 h-2 w-2 flex-none rounded-full bg-stone-300" />
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-stone-800">
+                    {actionLabel(a.action)}
+                  </div>
+                  {a.summary ? (
+                    <div className="text-sm text-stone-600">{a.summary}</div>
+                  ) : null}
+                  <div className="text-xs text-stone-400">
+                    {fmtDateTime(a.at)}
+                    {a.actor ? ` • ${a.actor}` : ""}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
       </section>
 
       <div className="mt-6">

@@ -242,6 +242,41 @@ function ymd(d: Date | null | undefined): string | null {
   return d ? new Date(d).toISOString().slice(0, 10) : null;
 }
 
+// Audit trail for a single case — the append-only history of who did what,
+// surfaced on the case page so the record is inspection-ready.
+export type AuditEntry = {
+  id: string;
+  action: string;
+  summary: string | null;
+  actor: string | null;
+  at: Date;
+};
+
+export async function caseAuditTrail(
+  employerId: string,
+  caseId: string,
+): Promise<AuditEntry[]> {
+  // Confirm the case belongs to this employer before exposing its history.
+  const owns = await prisma.saferRecruitmentCase.findFirst({
+    where: { id: caseId, employerId },
+    select: { id: true },
+  });
+  if (!owns) return [];
+
+  const rows = await prisma.auditLog.findMany({
+    where: { entityType: "SaferRecruitmentCase", entityId: caseId },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    action: r.action,
+    summary: r.summary,
+    actor: r.actorEmail ?? r.actorRole ?? null,
+    at: r.createdAt,
+  }));
+}
+
 export async function staffFileIndex(employerId: string): Promise<StaffFileRow[]> {
   const cases = await prisma.saferRecruitmentCase.findMany({
     where: {
