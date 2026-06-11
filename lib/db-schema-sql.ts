@@ -77,6 +77,29 @@ CREATE TABLE "Employer" (
 );
 
 -- CreateTable
+CREATE TABLE "AgencyWorker" (
+    "id" TEXT NOT NULL,
+    "employerId" TEXT NOT NULL,
+    "fullName" TEXT NOT NULL,
+    "agencyName" TEXT,
+    "role" TEXT,
+    "agencyChecksConfirmed" BOOLEAN NOT NULL DEFAULT false,
+    "agencyConfirmationRef" TEXT,
+    "identitySeenOnArrival" BOOLEAN NOT NULL DEFAULT false,
+    "dbsConfirmed" BOOLEAN NOT NULL DEFAULT false,
+    "referencesConfirmed" BOOLEAN NOT NULL DEFAULT false,
+    "rightToWorkConfirmed" BOOLEAN NOT NULL DEFAULT false,
+    "soleChargeApproved" BOOLEAN NOT NULL DEFAULT false,
+    "approvedBy" TEXT,
+    "approvedAt" TIMESTAMP(3),
+    "notes" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AgencyWorker_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Position" (
     "id" TEXT NOT NULL,
     "employerId" TEXT NOT NULL,
@@ -463,6 +486,9 @@ CREATE UNIQUE INDEX "Reference_token_key" ON "Reference"("token");
 CREATE UNIQUE INDEX "Employer_userId_key" ON "Employer"("userId");
 
 -- CreateIndex
+CREATE INDEX "AgencyWorker_employerId_idx" ON "AgencyWorker"("employerId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Interest_candidateId_employerId_direction_key" ON "Interest"("candidateId", "employerId", "direction");
 
 -- CreateIndex
@@ -536,6 +562,9 @@ ALTER TABLE "Reference" ADD CONSTRAINT "Reference_candidateId_fkey" FOREIGN KEY 
 
 -- AddForeignKey
 ALTER TABLE "Employer" ADD CONSTRAINT "Employer_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AgencyWorker" ADD CONSTRAINT "AgencyWorker_employerId_fkey" FOREIGN KEY ("employerId") REFERENCES "Employer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Position" ADD CONSTRAINT "Position_employerId_fkey" FOREIGN KEY ("employerId") REFERENCES "Employer"("id") ON DELETE CASCADE ON UPDATE CASCADE;

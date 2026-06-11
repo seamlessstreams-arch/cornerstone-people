@@ -9,6 +9,7 @@ const links = [
   { href: "/employer/market", label: "Market" },
   { href: "/employer/matches", label: "Matches" },
   { href: "/employer/safer-recruitment", label: "Safer recruitment" },
+  { href: "/employer/agency", label: "Agency staff" },
   { href: "/employer/reference-bank", label: "Reference bank" },
 ];
 
