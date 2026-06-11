@@ -212,3 +212,85 @@ export async function dashboardStats(employerId: string) {
     riskAlerts,
   };
 }
+
+// Single Central Record — the Ofsted-ready staff-file index. One row per case
+// with the state of each mandatory pre-employment check, the RAG roll-up, and
+// the outstanding/missing evidence. Derived entirely from existing data.
+export type StaffFileCheck = { ok: boolean; detail: string | null };
+export type StaffFileRow = {
+  caseId: string;
+  name: string;
+  stage: string;
+  identity: StaffFileCheck;
+  rightToWork: StaffFileCheck;
+  dbs: StaffFileCheck;
+  barredList: StaffFileCheck;
+  references: StaffFileCheck;
+  employmentGaps: StaffFileCheck;
+  compliance: RagReport;
+  missing: string[];
+};
+
+function ymd(d: Date | null | undefined): string | null {
+  return d ? new Date(d).toISOString().slice(0, 10) : null;
+}
+
+export async function staffFileIndex(employerId: string): Promise<StaffFileRow[]> {
+  const cases = await prisma.saferRecruitmentCase.findMany({
+    where: {
+      employerId,
+      stage: { notIn: ["REJECTED", "WITHDRAWN", "TALENT_BANK"] },
+    },
+    include: {
+      candidate: true,
+      references: true,
+      gapReview: true,
+      dbsCheck: true,
+      identityCheck: true,
+    },
+    orderBy: { candidate: { fullName: "asc" } },
+  });
+
+  return cases.map((c) => {
+    const compliance = caseCompliance(c);
+    const received = c.references.filter(
+      (r) => r.status === "RECEIVED" || r.status === "VERIFIED"
+    ).length;
+    const idc = c.identityCheck;
+    const dbs = c.dbsCheck;
+
+    return {
+      caseId: c.id,
+      name: c.candidate.fullName ?? "Candidate",
+      stage: c.stage,
+      identity: {
+        ok: !!idc?.identityDocumentSeen && !!idc?.likenessConfirmed,
+        detail: idc?.identityDocumentType ?? (ymd(idc?.checkedAt) && `Seen ${ymd(idc?.checkedAt)}`) ?? null,
+      },
+      rightToWork: {
+        ok: !!idc?.rightToWorkVerified,
+        detail: idc?.rightToWorkMethod ?? null,
+      },
+      dbs: {
+        ok: !!dbs?.certificateSeen && !dbs?.riskReviewRequired,
+        detail:
+          dbs?.level ??
+          (dbs?.certificateSeen ? `Seen ${ymd(dbs?.certificateDate)}` : null),
+      },
+      barredList: {
+        ok: !!dbs?.barredListChecked,
+        detail: dbs?.workforceType ?? null,
+      },
+      references: {
+        ok: received >= REQUIRED_VERIFIED_REFERENCES,
+        detail: `${received}/${REQUIRED_VERIFIED_REFERENCES} received`,
+      },
+      employmentGaps: {
+        ok: !!c.gapReview && c.gapReview.status !== "NEEDS_EXPLANATION",
+        detail: c.gapReview?.status ?? null,
+      },
+      compliance,
+      missing: [...compliance.blockers, ...compliance.outstanding],
+    };
+  });
+}

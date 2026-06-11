@@ -22,6 +22,11 @@ export default async function SaferRecruitmentDashboard() {
       <PageHeader
         title="Safer recruitment"
         subtitle="Track every matched candidate through pre-employment checks. The system chases, flags and summarises — a named human always makes the decision."
+        action={
+          <Link href="/employer/safer-recruitment/record" className="btn-secondary">
+            Single Central Record
+          </Link>
+        }
       />
 
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-500">
