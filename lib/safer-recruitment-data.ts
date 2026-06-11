@@ -226,6 +226,78 @@ export async function dashboardStats(employerId: string) {
   };
 }
 
+// Due reminders / escalations across an employer's active cases. The system
+// tracks chaser dates and review periods; this surfaces what is now due so a
+// manager can act (and is the basis an email/cron dispatcher can sit on top of).
+export type Reminder = {
+  caseId: string;
+  name: string;
+  severity: "OVERDUE" | "DUE" | "ACTION";
+  message: string;
+};
+
+export async function dueReminders(employerId: string): Promise<Reminder[]> {
+  const cases = await prisma.saferRecruitmentCase.findMany({
+    where: {
+      employerId,
+      stage: { notIn: ["REJECTED", "WITHDRAWN", "TALENT_BANK", "CLEARED_TO_START"] },
+    },
+    include: {
+      candidate: true,
+      references: true,
+      selfDeclaration: true,
+      exceptionalStart: true,
+    },
+  });
+
+  const now = new Date();
+  const out: Reminder[] = [];
+
+  for (const c of cases) {
+    const name = c.candidate.fullName ?? "Candidate";
+
+    // Overdue reference chasers — pick the most advanced chaser that is due.
+    for (const r of c.references) {
+      if (r.receivedAt || r.status === "RECEIVED" || r.status === "VERIFIED") continue;
+      const due = [
+        { at: r.finalChaserAt, label: "Final chaser", sev: "OVERDUE" as const },
+        { at: r.chaser2At, label: "2nd chaser", sev: "DUE" as const },
+        { at: r.chaser1At, label: "1st chaser", sev: "DUE" as const },
+      ].find((d) => d.at && d.at < now);
+      if (due && due.at) {
+        const days = Math.max(0, Math.round((now.getTime() - due.at.getTime()) / 86400000));
+        out.push({
+          caseId: c.id,
+          name,
+          severity: due.sev,
+          message: `${due.label} due for reference from ${r.refereeName}${days ? ` (${days}d overdue)` : ""}`,
+        });
+      }
+      if (r.concernFlag) {
+        out.push({ caseId: c.id, name, severity: "ACTION", message: `Reference from ${r.refereeName} flagged as concerning` });
+      }
+    }
+
+    // Exceptional start: awaiting approval, or past its review period.
+    const ex = c.exceptionalStart;
+    if (ex) {
+      if (ex.status !== "APPROVED") {
+        out.push({ caseId: c.id, name, severity: "ACTION", message: "Exceptional start awaiting RM/RI approval" });
+      } else if (ex.reviewDate && ex.reviewDate < now) {
+        out.push({ caseId: c.id, name, severity: "OVERDUE", message: "Exceptional-start review period exceeded — checks still outstanding" });
+      }
+    }
+
+    // Self-declaration disclosure awaiting a confidential manager review.
+    if (c.selfDeclaration?.disclosureFlagged && !c.selfDeclaration.reviewedAt) {
+      out.push({ caseId: c.id, name, severity: "ACTION", message: "Self-declaration disclosure awaiting manager review" });
+    }
+  }
+
+  const rank = { OVERDUE: 0, DUE: 1, ACTION: 2 } as const;
+  return out.sort((a, b) => rank[a.severity] - rank[b.severity]);
+}
+
 // Single Central Record — the Ofsted-ready staff-file index. One row per case
 // with the state of each mandatory pre-employment check, the RAG roll-up, and
 // the outstanding/missing evidence. Derived entirely from existing data.
