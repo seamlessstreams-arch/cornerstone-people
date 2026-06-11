@@ -118,8 +118,8 @@ export async function requestPasswordReset(_prev: unknown, formData: FormData) {
   });
 
   const link = `${appUrl()}/reset-password/${token}`;
-  const subject = "Reset your Cornerstone People password";
-  const text = `We received a request to reset the password for your Cornerstone People account.\n\nReset it here (expires in 1 hour):\n${link}\n\nIf you didn't request this, you can safely ignore this email — your password won't change.`;
+  const subject = "Reset your Keni password";
+  const text = `We received a request to reset the password for your Keni account.\n\nReset it here (expires in 1 hour):\n${link}\n\nIf you didn't request this, you can safely ignore this email — your password won't change.`;
 
   await logAudit({
     actor: { id: user.id, email: user.email, role: user.role as never },

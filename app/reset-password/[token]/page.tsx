@@ -21,7 +21,7 @@ export default async function ResetPasswordPage({
           href="/"
           className="text-lg font-semibold tracking-tight text-brand-700"
         >
-          Cornerstone People
+          Keni
         </Link>
         <h1 className="mt-6 text-2xl font-semibold text-stone-900">
           Set a new password

@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { prisma } from "./db";
 import type { Role } from "./constants";
 
-const COOKIE_NAME = "cornerstone_session";
+const COOKIE_NAME = "keni_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 
 export async function createSession(userId: string) {

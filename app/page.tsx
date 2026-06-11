@@ -14,7 +14,7 @@ export default async function HomePage() {
       <header className="border-b border-stone-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <span className="text-lg font-semibold tracking-tight text-brand-700">
-            Cornerstone People
+            Keni
           </span>
           <nav className="flex items-center gap-2">
             {homeHref ? (
@@ -37,7 +37,7 @@ export default async function HomePage() {
 
       <section className="mx-auto max-w-5xl px-6 py-16">
         <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">
-          Children&apos;s-home recruitment, done right
+          Recruitment for children&apos;s homes, matched on trust.
         </p>
         <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight text-stone-900 sm:text-5xl">
           You connect only when interest is{" "}
@@ -77,7 +77,9 @@ export default async function HomePage() {
 
       <footer className="border-t border-stone-200 bg-white">
         <div className="mx-auto max-w-5xl px-6 py-6 text-sm text-stone-400">
-          Cornerstone People — MVP. Candidates never pay.
+          Keni — MVP. Candidates never pay.
+          <br />
+          Keni is a trading name of Pain Point Resolutions Ltd.
         </div>
       </footer>
     </main>

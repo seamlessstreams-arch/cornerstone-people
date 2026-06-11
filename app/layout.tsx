@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Cornerstone People",
+  title: "Keni — children's-home recruitment, matched on trust",
   description:
     "A regional, supply-first matching app for children's-home recruitment. Candidates and homes connect only when interest is mutual.",
 };

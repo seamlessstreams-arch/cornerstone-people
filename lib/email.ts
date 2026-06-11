@@ -11,7 +11,7 @@ export function emailConfigured(): boolean {
 
 function fromAddress(): string {
   // Override with EMAIL_FROM once a verified domain is set up in Resend.
-  return process.env.EMAIL_FROM || "Cornerstone People <onboarding@resend.dev>";
+  return process.env.EMAIL_FROM || "Keni <onboarding@resend.dev>";
 }
 
 export async function sendEmail(args: {
