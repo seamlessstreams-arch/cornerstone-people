@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireEmployer } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
@@ -87,6 +88,12 @@ export default async function PositionsPage() {
                   ) : null}
                 </div>
                 <div className="flex items-center gap-2">
+                  <Link
+                    href={`/employer/positions/${p.id}/vacancy-pack`}
+                    className="btn-secondary px-3 py-1.5"
+                  >
+                    Vacancy pack
+                  </Link>
                   <form action={togglePosition}>
                     <input type="hidden" name="positionId" value={p.id} />
                     <button type="submit" className="btn-secondary px-3 py-1.5">
