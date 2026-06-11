@@ -26,6 +26,7 @@ export async function loadCase(employerId: string, caseId: string) {
       references: { orderBy: { createdAt: "asc" }, include: { bankEntry: true } },
       gapReview: true,
       dbsCheck: true,
+      identityCheck: true,
     },
   });
   return c;
@@ -65,6 +66,11 @@ type CaseForCompliance = {
     receivedAt: Date | null;
   }[];
   dbsCheck: { certificateSeen: boolean; riskReviewRequired: boolean } | null;
+  identityCheck: {
+    identityDocumentSeen: boolean;
+    likenessConfirmed: boolean;
+    rightToWorkVerified: boolean;
+  } | null;
   gapReview: { status: string } | null;
 };
 
@@ -92,6 +98,15 @@ export function caseCompliance(c: CaseForCompliance): RagReport {
   );
 
   const signedOff = !!c.clearedToStartBy;
+  // Identity is verified once a document has been seen and the likeness
+  // confirmed; right-to-work once its own check passes. A cleared sign-off
+  // also implies both were satisfied as part of the human decision.
+  const identityVerified =
+    (!!c.identityCheck?.identityDocumentSeen &&
+      !!c.identityCheck?.likenessConfirmed) ||
+    signedOff;
+  const rightToWorkVerified =
+    (c.identityCheck?.rightToWorkVerified ?? false) || signedOff;
 
   return computeRag({
     stage: c.stage,
@@ -103,10 +118,8 @@ export function caseCompliance(c: CaseForCompliance): RagReport {
     referenceNeedsClarification,
     dbsCertificateSeen: c.dbsCheck?.certificateSeen ?? false,
     dbsRiskReviewRequired: c.dbsCheck?.riskReviewRequired ?? false,
-    // Right-to-work is not yet a first-class check; until it is, a cleared
-    // sign-off is the point at which a manager confirms it. Non-cleared cases
-    // therefore correctly surface "right to work not verified" as outstanding.
-    rightToWorkVerified: signedOff,
+    identityVerified,
+    rightToWorkVerified,
     employmentGapsReviewed:
       !!c.gapReview && c.gapReview.status !== "NEEDS_EXPLANATION",
     employmentGapConcern:
@@ -127,6 +140,7 @@ export async function dashboardStats(employerId: string) {
       references: true,
       gapReview: true,
       dbsCheck: true,
+      identityCheck: true,
     },
     orderBy: { updatedAt: "desc" },
   });

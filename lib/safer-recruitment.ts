@@ -382,6 +382,7 @@ export type RagInputs = {
   referenceNeedsClarification: boolean;
   dbsCertificateSeen: boolean;
   dbsRiskReviewRequired: boolean;
+  identityVerified: boolean;
   rightToWorkVerified: boolean;
   employmentGapsReviewed: boolean;
   employmentGapConcern: boolean;
@@ -409,6 +410,7 @@ export function computeRag(i: RagInputs): RagReport {
 
   // Mandatory evidence still outstanding.
   if (!i.dbsCertificateSeen) outstanding.push("DBS certificate not yet seen");
+  if (!i.identityVerified) outstanding.push("Identity not verified");
   if (!i.rightToWorkVerified) outstanding.push("Right to work not verified");
   if (!i.employmentGapsReviewed) outstanding.push("Employment gaps not reviewed");
   if (i.referencesReceived < i.referencesRequired) {
@@ -457,6 +459,7 @@ export function computeRag(i: RagInputs): RagReport {
       i.referenceAwaitingResponse || i.referenceNeedsClarification;
     const mandatoryMissing =
       !i.dbsCertificateSeen ||
+      !i.identityVerified ||
       !i.rightToWorkVerified ||
       !i.employmentGapsReviewed ||
       i.referencesReceived === 0;
