@@ -407,6 +407,26 @@ CREATE TABLE "HealthDeclaration" (
 );
 
 -- CreateTable
+CREATE TABLE "ShadowShift" (
+    "id" TEXT NOT NULL,
+    "caseId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'DRAFT',
+    "shiftDate" TIMESTAMP(3),
+    "supervisorName" TEXT,
+    "riskAssessed" BOOLEAN NOT NULL DEFAULT false,
+    "supervisedAtAllTimes" BOOLEAN NOT NULL DEFAULT false,
+    "notCountedInStaffing" BOOLEAN NOT NULL DEFAULT false,
+    "noAccessToChildInfo" BOOLEAN NOT NULL DEFAULT false,
+    "notes" TEXT,
+    "authorisedBy" TEXT,
+    "authorisedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ShadowShift_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "AuditLog" (
     "id" TEXT NOT NULL,
     "actorId" TEXT,
@@ -531,6 +551,9 @@ CREATE UNIQUE INDEX "HealthDeclaration_caseId_key" ON "HealthDeclaration"("caseI
 CREATE UNIQUE INDEX "HealthDeclaration_publicToken_key" ON "HealthDeclaration"("publicToken");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "ShadowShift_caseId_key" ON "ShadowShift"("caseId");
+
+-- CreateIndex
 CREATE INDEX "AuditLog_entityType_entityId_idx" ON "AuditLog"("entityType", "entityId");
 
 -- CreateIndex
@@ -628,6 +651,9 @@ ALTER TABLE "SelfDeclaration" ADD CONSTRAINT "SelfDeclaration_caseId_fkey" FOREI
 
 -- AddForeignKey
 ALTER TABLE "HealthDeclaration" ADD CONSTRAINT "HealthDeclaration_caseId_fkey" FOREIGN KEY ("caseId") REFERENCES "SaferRecruitmentCase"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ShadowShift" ADD CONSTRAINT "ShadowShift_caseId_fkey" FOREIGN KEY ("caseId") REFERENCES "SaferRecruitmentCase"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "StoredFile" ADD CONSTRAINT "StoredFile_candidateId_fkey" FOREIGN KEY ("candidateId") REFERENCES "Candidate"("id") ON DELETE CASCADE ON UPDATE CASCADE;

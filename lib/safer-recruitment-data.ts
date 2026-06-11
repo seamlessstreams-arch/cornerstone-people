@@ -31,6 +31,7 @@ export async function loadCase(employerId: string, caseId: string) {
       qualifications: { orderBy: { createdAt: "asc" } },
       selfDeclaration: true,
       healthDeclaration: true,
+      shadowShift: true,
     },
   });
   return c;
