@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { isCandidateVerified } from "@/lib/matching";
 import { Field, PageHeader, Tags, VerifiedBadge } from "@/components/ui";
 import { MatchThread } from "@/components/MatchThread";
+import { openCase } from "@/app/actions/safer-recruitment";
 
 export default async function EmployerMatchDetail({
   params,
@@ -17,6 +18,7 @@ export default async function EmployerMatchDetail({
     include: {
       candidate: { include: { references: true } },
       messages: { orderBy: { createdAt: "asc" } },
+      saferCase: true,
     },
   });
 
@@ -35,9 +37,26 @@ export default async function EmployerMatchDetail({
         title={c.fullName ?? "Candidate"}
         subtitle="You matched — the full profile and verified references are unlocked."
         action={
-          <Link href="/employer/matches" className="btn-secondary">
-            ← All matches
-          </Link>
+          <div className="flex items-center gap-2">
+            {match.saferCase ? (
+              <Link
+                href={`/employer/safer-recruitment/${match.saferCase.id}`}
+                className="btn-primary"
+              >
+                Open safer-recruitment case →
+              </Link>
+            ) : (
+              <form action={openCase}>
+                <input type="hidden" name="matchId" value={match.id} />
+                <button type="submit" className="btn-primary">
+                  Start safer recruitment
+                </button>
+              </form>
+            )}
+            <Link href="/employer/matches" className="btn-secondary">
+              ← All matches
+            </Link>
+          </div>
         }
       />
 

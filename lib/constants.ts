@@ -12,10 +12,56 @@ export type VisibilityMode = (typeof VISIBILITY_MODES)[number];
 
 // The MVP launches in a single, dense region (brief §8 cold-start plan).
 export const REGIONS = [
-  "Greater Manchester",
-  "Lancashire",
-  "Merseyside",
+  // England, county / metropolitan-area level (children's residential care is
+  // England-regulated). Alphabetical for an easy dropdown.
+  "Bedfordshire",
+  "Berkshire",
+  "Bristol",
+  "Buckinghamshire",
+  "Cambridgeshire",
   "Cheshire",
+  "Cornwall",
+  "County Durham",
+  "Cumbria",
+  "Derbyshire",
+  "Devon",
+  "Dorset",
+  "East Riding of Yorkshire",
+  "East Sussex",
+  "Essex",
+  "Gloucestershire",
+  "Greater London",
+  "Greater Manchester",
+  "Hampshire",
+  "Herefordshire",
+  "Hertfordshire",
+  "Isle of Wight",
+  "Kent",
+  "Lancashire",
+  "Leicestershire",
+  "Lincolnshire",
+  "Merseyside",
+  "Norfolk",
+  "Northamptonshire",
+  "Northumberland",
+  "North Yorkshire",
+  "Nottinghamshire",
+  "Oxfordshire",
+  "Rutland",
+  "Shropshire",
+  "Somerset",
+  "South Yorkshire",
+  "Staffordshire",
+  "Suffolk",
+  "Surrey",
+  "Tees Valley",
+  "Tyne and Wear",
+  "Warwickshire",
+  "West Midlands",
+  "West Sussex",
+  "West Yorkshire",
+  "Wiltshire",
+  "Worcestershire",
 ] as const;
 
 export const SHIFT_PATTERNS = [
@@ -50,6 +96,8 @@ export const ROLE_TYPES = [
   "Team Leader",
   "Deputy Manager",
   "Registered Manager",
+  "Operations Manager",
+  "Responsible Individual",
   "Waking Night Worker",
 ] as const;
 
@@ -75,4 +123,201 @@ export const REQUIRED_CANDIDATE_FIELDS = [
   "experienceLevel",
   "roleType",
   "valuesTags",
+] as const;
+
+// ---------------------------------------------------------------------------
+// Safer Recruitment OS vocabularies
+//
+// The safer-recruitment workflow only begins AFTER a mutual match (identity is
+// unlocked), so a case always belongs to a Match. These ordered stages drive
+// the employer pipeline board. The two "start" outcomes are deliberately
+// distinct: nothing AI- or rule-based ever sets them — a human must.
+// ---------------------------------------------------------------------------
+
+export const SR_STAGES = [
+  "APPLICATION_RECEIVED",
+  "PHONE_SCREEN",
+  "INTERVIEW_BOOKED",
+  "INTERVIEWED",
+  "CONDITIONAL_OFFER",
+  "CHECKS_IN_PROGRESS",
+  "REFERENCE_HOLD",
+  "DBS_HOLD",
+  "EMPLOYMENT_GAP_HOLD",
+  "RM_REVIEW_REQUIRED",
+  "CLEARED_TO_START",
+  "EXCEPTIONAL_SUPERVISED_START",
+  "REJECTED",
+  "WITHDRAWN",
+  "TALENT_BANK",
+] as const;
+export type SrStage = (typeof SR_STAGES)[number];
+
+export const SR_STAGE_LABELS: Record<SrStage, string> = {
+  APPLICATION_RECEIVED: "Application received",
+  PHONE_SCREEN: "Phone screen",
+  INTERVIEW_BOOKED: "Interview booked",
+  INTERVIEWED: "Interviewed",
+  CONDITIONAL_OFFER: "Conditional offer",
+  CHECKS_IN_PROGRESS: "Checks in progress",
+  REFERENCE_HOLD: "Reference hold",
+  DBS_HOLD: "DBS hold",
+  EMPLOYMENT_GAP_HOLD: "Employment gap hold",
+  RM_REVIEW_REQUIRED: "RM/RI review required",
+  CLEARED_TO_START: "Cleared to start",
+  EXCEPTIONAL_SUPERVISED_START: "Exceptional supervised start",
+  REJECTED: "Rejected",
+  WITHDRAWN: "Withdrawn",
+  TALENT_BANK: "Talent bank",
+};
+
+// Stages a human must explicitly sign off (principle 3). Never auto-set.
+export const SR_HUMAN_SIGNOFF_STAGES: SrStage[] = [
+  "CLEARED_TO_START",
+  "EXCEPTIONAL_SUPERVISED_START",
+  "REJECTED",
+];
+
+export const REFERENCE_TYPES = [
+  "Current employer",
+  "Previous employer",
+  "Children's workforce reference",
+  "Character reference",
+  "Agency reference",
+  "Education / training reference",
+] as const;
+export type ReferenceType = (typeof REFERENCE_TYPES)[number];
+
+export const REFERENCE_REQUEST_METHODS = [
+  "Email",
+  "Reference portal",
+  "Phone",
+  "Post",
+] as const;
+
+// Reference quality analyser outcomes (rule-based first, AI-ready later).
+export const REFERENCE_QUALITY = [
+  "STRONG",
+  "ADEQUATE",
+  "BASIC",
+  "INCOMPLETE",
+  "CONCERNING",
+  "CONTRADICTORY",
+  "REQUIRES_HUMAN_REVIEW",
+] as const;
+export type ReferenceQuality = (typeof REFERENCE_QUALITY)[number];
+
+// Human disposition of a received reference. Separate from the analyser output.
+export const REFERENCE_DISPOSITIONS = [
+  "ACCEPTED",
+  "INSUFFICIENT",
+  "CONCERNING",
+  "MORE_INFORMATION_REQUIRED",
+] as const;
+
+export const REFERENCE_REQUEST_STATUS = [
+  "DRAFT",
+  "SENT",
+  "CHASED",
+  "RECEIVED",
+  "VERIFIED",
+] as const;
+
+export const EMPLOYMENT_GAP_STATUS = [
+  "ACCEPTED",
+  "NEEDS_EXPLANATION",
+  "CONCERN",
+  "ESCALATED",
+] as const;
+
+export const DBS_WORKFORCE_TYPES = [
+  "Child workforce",
+  "Adult workforce",
+  "Child & adult workforce",
+  "Other workforce",
+] as const;
+
+export const DBS_LEVELS = [
+  "Enhanced with barred list",
+  "Enhanced",
+  "Standard",
+  "Basic",
+] as const;
+
+// Exceptional / supervised start — used only when a candidate must start before
+// every pre-employment check is complete. It is never automatic: it needs a
+// risk assessment, a supervision plan with hard controls, and a named RM/RI
+// approval.
+export const EXCEPTIONAL_START_STATUS = [
+  "DRAFT",
+  "PENDING_APPROVAL",
+  "APPROVED",
+  "DECLINED",
+  "ENDED",
+] as const;
+export type ExceptionalStartStatus = (typeof EXCEPTIONAL_START_STATUS)[number];
+
+export const EXCEPTIONAL_START_STATUS_LABELS: Record<
+  ExceptionalStartStatus,
+  string
+> = {
+  DRAFT: "Draft",
+  PENDING_APPROVAL: "Pending RM/RI approval",
+  APPROVED: "Approved — supervised",
+  DECLINED: "Declined",
+  ENDED: "Ended",
+};
+
+export const RISK_LEVELS = ["low", "moderate", "high"] as const;
+
+// Qualifications, mandatory training and professional registrations recorded on
+// a staff file. "Required" ones must be evidenced before a start.
+export const QUALIFICATION_KINDS = [
+  "Qualification",
+  "Mandatory training",
+  "Professional registration",
+  "Other",
+] as const;
+export type QualificationKind = (typeof QUALIFICATION_KINDS)[number];
+
+// Candidate self-declaration (criminal self-disclosure) — requested at the
+// shortlisted stage. Any disclosure is routed to a named manager for a
+// confidential review before interview/offer.
+export const SELF_DECLARATION_STATUS = [
+  "PENDING",
+  "SUBMITTED",
+  "REVIEWED",
+] as const;
+export type SelfDeclarationStatus = (typeof SELF_DECLARATION_STATUS)[number];
+
+export const SELF_DECLARATION_OUTCOMES = [
+  "CLEAR",
+  "DISCLOSURE_ACCEPTED",
+  "ESCALATED",
+] as const;
+
+// Health / fitness declaration — requested after a conditional offer. Asks only
+// role-related fitness questions; sensitive health information is shown only to
+// the manager on their own case, and a named manager confirms fitness for role.
+export const HEALTH_DECLARATION_STATUS = [
+  "PENDING",
+  "SUBMITTED",
+  "REVIEWED",
+] as const;
+export type HealthDeclarationStatus = (typeof HEALTH_DECLARATION_STATUS)[number];
+
+export const HEALTH_FITNESS_OUTCOMES = [
+  "FIT",
+  "FIT_WITH_ADJUSTMENTS",
+  "OCCUPATIONAL_HEALTH_REFERRAL",
+  "NOT_FIT",
+] as const;
+
+// The hard supervision controls that must all be in place before an
+// exceptional supervised start can be approved.
+export const EXCEPTIONAL_START_CONTROLS = [
+  { key: "noSoleCharge", label: "Never in sole charge of children" },
+  { key: "noUnsupervisedAccess", label: "No unsupervised access" },
+  { key: "noIntimateCare", label: "No intimate / personal care" },
+  { key: "noOvernight", label: "No overnight or off-site responsibility" },
 ] as const;

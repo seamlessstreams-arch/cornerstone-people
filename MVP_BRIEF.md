@@ -1,4 +1,4 @@
-# Cornerstone People — MVP Build Brief
+# Keni — MVP Build Brief
 
 **A regional, supply-first matching app for children's-home recruitment.**
 Candidates and homes connect only when interest is mutual. A matched candidate

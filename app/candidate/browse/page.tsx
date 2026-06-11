@@ -4,8 +4,13 @@ import { prisma } from "@/lib/db";
 import { expressInterestAction } from "@/app/actions/connection";
 import { PageHeader, EmptyState, Field } from "@/components/ui";
 
-export default async function CandidateBrowsePage() {
+export default async function CandidateBrowsePage({
+  searchParams,
+}: {
+  searchParams: { region?: string };
+}) {
   const { candidate } = await requireCandidate();
+  const region = (searchParams.region ?? "").trim();
 
   // Candidates may NOT see employers they've blocked (they chose to hide).
   const blocks = await prisma.block.findMany({
@@ -15,7 +20,12 @@ export default async function CandidateBrowsePage() {
   const blockedIds = blocks.map((b) => b.employerId);
 
   const employers = await prisma.employer.findMany({
-    where: { id: { notIn: blockedIds } },
+    where: {
+      id: { notIn: blockedIds },
+      ...(region
+        ? { region: { contains: region, mode: "insensitive" as const } }
+        : {}),
+    },
     include: { positions: { where: { active: true } } },
     orderBy: { updatedAt: "desc" },
   });
@@ -39,9 +49,35 @@ export default async function CandidateBrowsePage() {
         subtitle="Express interest in homes that fit. You only unlock a conversation when they're interested too."
       />
 
+      <form method="get" className="mb-5 flex flex-wrap items-end gap-3">
+        <div className="min-w-[14rem] flex-1">
+          <label htmlFor="region" className="label">
+            Filter by region
+          </label>
+          <input
+            id="region"
+            type="text"
+            name="region"
+            defaultValue={region}
+            placeholder="e.g. Greater Manchester"
+            className="input"
+          />
+        </div>
+        <button type="submit" className="btn-primary">
+          Filter
+        </button>
+        {region ? (
+          <Link href="/candidate/browse" className="btn-secondary">
+            Clear
+          </Link>
+        ) : null}
+      </form>
+
       {employers.length === 0 ? (
-        <EmptyState title="No homes to show yet">
-          As homes join your region they&apos;ll appear here.
+        <EmptyState title={region ? `No homes match “${region}”` : "No homes to show yet"}>
+          {region
+            ? "Try a broader region, or clear the filter to see every home."
+            : "As homes join your region they’ll appear here."}
         </EmptyState>
       ) : (
         <div className="grid gap-5 lg:grid-cols-2">
