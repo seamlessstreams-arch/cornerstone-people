@@ -156,9 +156,10 @@ export default async function HomePage() {
           residential care.
         </h2>
         <p className="mt-3 max-w-2xl text-stone-600">
-          Indeed and CV-Library hand you a stack of CVs and leave the hard part
-          — safer recruitment, suitability, culture and compliance — entirely to
-          you. Keni is built for this sector and carries that weight with you.
+          Generic job boards and CV databases hand you a stack of CVs and leave
+          the hard part — safer recruitment, suitability, culture and compliance
+          — entirely to you. Keni is built for this sector and carries that
+          weight with you.
         </p>
         <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <Feature title="Safer recruitment, built in" body="Schedule 2 checks, reference analysis and a clear suitability picture — not a CV dump you have to vet from scratch." />
