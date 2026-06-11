@@ -4,8 +4,50 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireEmployer } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { parseSourcedList } from "@/lib/sourcing";
 
 const STAGES = ["NEW", "REVIEWING", "INVITED", "ARCHIVED"] as const;
+
+// Cap a single import so a paste can't create an unbounded number of rows.
+const MAX_IMPORT = 2000;
+
+// Bulk import a licensed candidate list (e.g. a CSV exported from the
+// employer's own CV-Library account). Stores structured attributes for
+// auto-shortlisting — and, by design, NEVER any contact details.
+export async function importSourcedCandidates(formData: FormData) {
+  const { employer, user } = await requireEmployer();
+  const text = String(formData.get("csv") ?? "");
+  const source = String(formData.get("source") ?? "").trim() || "CV-Library";
+
+  const rows = parseSourcedList(text).slice(0, MAX_IMPORT);
+  if (rows.length === 0) {
+    revalidatePath("/employer/talent-pipeline");
+    return;
+  }
+
+  await prisma.talentProspect.createMany({
+    data: rows.map((r) => ({
+      employerId: employer.id,
+      name: r.name,
+      source,
+      profileUrl: r.profileUrl,
+      region: r.region,
+      roleSought: r.roleSought,
+      experienceLevel: r.experienceLevel,
+      skills: r.skills,
+      summary: r.summary,
+      createdBy: user.email,
+    })),
+  });
+  await logAudit({
+    actor: user,
+    action: "TALENT_PROSPECTS_IMPORTED",
+    entityType: "TalentProspect",
+    entityId: employer.id,
+    summary: `Imported ${rows.length} sourced candidates from ${source} (no contact details)`,
+  });
+  revalidatePath("/employer/talent-pipeline");
+}
 
 function str(formData: FormData, key: string): string | null {
   const v = String(formData.get(key) ?? "").trim();

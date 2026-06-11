@@ -578,6 +578,15 @@ model TalentProspect {
   // We store only the link — never the candidate's contact details — so the
   // employer opens it under their own licensed account.
   profileUrl String?
+
+  // Structured, non-contact attributes used to auto-shortlist a bulk list
+  // against a role's criteria. Populated from a licensed CSV import.
+  region          String?
+  roleSought      String?
+  experienceLevel String?
+  skills          String? // comma-separated keywords
+  summary         String? // short headline — never contact details
+
   note   String?
   stage  String   @default("NEW") // NEW | REVIEWING | INVITED | ARCHIVED
 
