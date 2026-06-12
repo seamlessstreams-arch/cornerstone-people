@@ -313,6 +313,8 @@ export type StaffFileRow = {
   references: StaffFileCheck;
   employmentGaps: StaffFileCheck;
   qualifications: StaffFileCheck;
+  selfDeclaration: StaffFileCheck;
+  health: StaffFileCheck;
   compliance: RagReport;
   missing: string[];
 };
@@ -370,6 +372,7 @@ export async function staffFileIndex(employerId: string): Promise<StaffFileRow[]
       identityCheck: true,
       qualifications: true,
       selfDeclaration: true,
+      healthDeclaration: true,
     },
     orderBy: { candidate: { fullName: "asc" } },
   });
@@ -421,6 +424,29 @@ export async function staffFileIndex(employerId: string): Promise<StaffFileRow[]
         return {
           ok: quals.length > 0 && !requiredOutstanding,
           detail: quals.length ? `${seen}/${quals.length} evidenced` : "none recorded",
+        };
+      })(),
+      selfDeclaration: (() => {
+        const sd = c.selfDeclaration;
+        if (!sd) return { ok: false, detail: "not sent" };
+        const ok =
+          sd.status === "REVIEWED" ||
+          (sd.status === "SUBMITTED" && !sd.disclosureFlagged);
+        return {
+          ok,
+          detail: sd.disclosureFlagged
+            ? `disclosure (${sd.status.toLowerCase()})`
+            : sd.status.toLowerCase(),
+        };
+      })(),
+      health: (() => {
+        const hd = c.healthDeclaration;
+        if (!hd) return { ok: false, detail: "not sent" };
+        return {
+          ok: hd.status === "REVIEWED",
+          detail: hd.fitnessOutcome
+            ? hd.fitnessOutcome.replace(/_/g, " ").toLowerCase()
+            : hd.status.toLowerCase(),
         };
       })(),
       compliance,

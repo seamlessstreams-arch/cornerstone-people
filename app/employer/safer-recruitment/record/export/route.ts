@@ -37,6 +37,8 @@ export async function GET() {
     "References",
     "Employment gaps",
     "Qualifications",
+    "Self-declaration",
+    "Health",
     "Outstanding",
   ];
   const lines = [header.join(",")];
@@ -54,6 +56,8 @@ export async function GET() {
         check(r.references),
         check(r.employmentGaps),
         check(r.qualifications),
+        check(r.selfDeclaration),
+        check(r.health),
         r.missing.join("; "),
       ]
         .map((x) => csvCell(String(x)))
